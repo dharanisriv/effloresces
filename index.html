@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Effloresces</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            cursor: pointer;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        .font-serif { font-family: 'Cormorant Garamond', serif; }
+        .font-pixel { font-family: 'Silkscreen', monospace; }
+
+        /* Screens */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            text-align: center;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .screen.active {
+            display: flex;
+            animation: fadeIn 0.8s ease forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Home Background (Gate/Greenhouse) */
+        .home-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://z-cdn-media.chatglm.cn/files/d0fa3ec3-ceb0-4cab-a439-2682708c6a7f.png?auth_key=1882069028-2dcccebf11f3455f8c7bfd40b241d071-0-516fee564ba83a5fefce4d53cc9f3d7e');
+            background-size: cover;
+            background-position: left center; 
+            z-index: 0;
+        }
+
+        /* Path Select Background (New Image, Very Light) */
+        .path-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(253, 252, 248, 0.85)), url('https://z-cdn-media.chatglm.cn/files/b07d8249-e1cc-4bd9-aef2-5c5ba8fc805c.png?auth_key=1882069875-83215bbd2ebd4d4cbc437599c50b834c-0-2bd4242148c6305d87098c96be59f9d7');
+            background-size: cover;
+            background-position: center center;
+            z-index: 0;
+        }
+
+        /* Floating Flowers */
+        .floating-flower {
+            position: absolute;
+            z-index: 2;
+            opacity: 0;
+            animation: floatFade linear infinite;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+        @keyframes floatFade {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            15% { opacity: 0.9; transform: scale(1); }
+            85% { opacity: 0.9; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+
+        /* UI Elements */
+        .frame-border {
+            position: absolute;
+            top: 30px; left: 30px; right: 30px; bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        h1 { font-size: clamp(3rem, 7vw, 5.5rem); margin: 0; line-height: 1; color: #fff; text-shadow: 4px 4px 0px #000; }
+        h2 { font-size: clamp(2rem, 5vw, 3.5rem); margin: 0; line-height: 1; color: #fff; text-shadow: 3px 3px 0px #000; }
+        p { margin: 0; }
+        .description { font-size: clamp(0.85rem, 1.8vw, 1.1rem); max-width: 600px; margin: 2vh 0; line-height: 1.5; color: #fff; text-shadow: 2px 2px 4px #000; }
+
+        .elegant-btn {
+            border: 2px solid #fff;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
+            transition: all 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000);
+            letter-spacing: 0.3em;
+            padding: 12px 32px;
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            cursor: pointer;
+            margin-top: 1vh;
+            text-shadow: 2px 2px 0px #000;
+        }
+        .elegant-btn:hover {
+            background: #fff;
+            color: #000;
+            text-shadow: none;
+            box-shadow: 0 10px 30px -10px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Path Grid */
+        .path-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: clamp(1.5rem, 4vw, 3rem);
+            margin-top: 4vh;
+        }
+        .path-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            transition: transform 0.3s;
+        }
+        .path-item:hover { transform: translateY(-5px); }
+        .path-item canvas {
+            width: 80px; height: 80px;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+        }
+        .path-item span {
+            margin-top: 10px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            color: #fff;
+            text-transform: capitalize;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        /* Game UI */
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+        #tooltip h3 { margin: 0; font-size: 1.2rem; font-family: 'Cormorant Garamond', serif; }
+        #tooltip p { margin: 4px 0 0 0; font-size: 0.85rem; color: #555; font-style: italic; }
+        #tooltip .pluck-hint { margin-top: 8px; font-size: 0.75rem; color: #8F9E8B; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .game-ui h1 { font-family: 'Cormorant Garamond', serif; font-size: 2.5rem; margin: 0; }
+        
+        .game-btn {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid white;
+            color: #8F9E8B;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .basket-count {
+            background: #E53935;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        /* Studio UI */
+        #studio-screen {
+            background: #1a1a1a;
+            color: #FDFCF8;
+            display: none;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: stretch;
+            padding: 0;
+            text-align: left;
+        }
+        #studio-screen.active { display: flex; }
+        .studio-sidebar {
+            width: 300px;
+            background: #262626;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+        }
+        .studio-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+            position: relative;
+        }
+        .studio-right {
+            width: 350px;
+            background: #262626;
+            padding: 20px;
+            border-left: 1px solid #444;
+            overflow-y: auto;
+        }
+        .studio-section { margin-bottom: 20px; }
+        .studio-section h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: #C5B358;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        .studio-option-btn {
+            background: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .studio-option-btn:hover, .studio-option-btn.active {
+            background: #8F9E8B;
+            color: #111;
+            border-color: #8F9E8B;
+        }
+        .studio-input {
+            width: 100%;
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1rem;
+            resize: vertical;
+        }
+        .studio-canvas-wrapper {
+            border: 10px solid #FDFCF8;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            background: #fff;
+        }
+        #studioCanvas {
+            display: block;
+            cursor: grab;
+        }
+        #studioCanvas:active { cursor: grabbing; }
+        
+        .meaning-box {
+            background: #333;
+            border: 1px solid #555;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .meaning-box h4 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            color: #C5B358;
+            margin-bottom: 8px;
+        }
+        .meaning-box p {
+            font-size: 0.9rem;
+            color: #ccc;
+            font-style: italic;
+            line-height: 1.4;
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HOMEPAGE SCREEN -->
+    <div id="home-screen" class="screen active">
+        <div class="home-bg"></div>
+        <div class="frame-border"></div>
+        
+        <h1 class="font-pixel tracking-wider" style="z-index:10; position:relative;">Effloresces</h1>
+        <canvas id="pixel-bouquet" width="48" height="48" style="z-index:10; position:relative; width: clamp(160px, 28vh, 280px); height: auto; margin: 1.5vh 0; image-rendering: pixelated; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.8));"></canvas>
+        <p class="font-pixel text-sm tracking-[0.4em] uppercase" style="z-index:10; position:relative;">A Botanical Experience</p>
+        <p class="font-serif description" style="z-index:10; position:relative; font-size: 1.2rem;">Wander through quiet paths of meaning. Gather blossoms, weave your sentiments, and send a sentiment grown from the earth.</p>
+        <button id="enter-btn" class="font-pixel elegant-btn uppercase" style="z-index:10; position:relative;">Enter Garden</button>
+    </div>
+
+    <!-- PATH SELECTION SCREEN -->
+    <div id="path-screen" class="screen">
+        <div class="path-bg"></div>
+        <div class="frame-border"></div>
+        
+        <button id="home-back-btn" class="game-btn" style="position: absolute; top: 20px; left: 20px; z-index: 50; text-shadow: none;">Back to Home</button>
+
+        <h2 class="font-pixel tracking-wide mb-4" style="z-index:10; position:relative;">Choose Your Path</h2>
+        <p class="font-serif description" style="z-index:10; position:relative;">Select a color to begin your journey</p>
+        <div class="path-grid" id="path-grid" style="z-index:10; position:relative;"></div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen" style="background: #1a1a1a;">
+        <div class="game-ui">
+            <button id="back-btn" class="game-btn">Back</button>
+            <h1 id="game-title">White Road</h1>
+            <button id="studio-btn" class="game-btn">Bouquet <span class="basket-count" id="basketCount">0</span></button>
+        </div>
+        <div class="controls-hint">WASD / Arrows: Walk<br>Click Flower: Pluck</div>
+        <div id="tooltip">
+            <h3 id="tipName">Flower</h3>
+            <p id="tipMeaning">Meaning</p>
+            <div class="pluck-hint">Click to Pluck</div>
+        </div>
+        <canvas id="gameCanvas" width="960" height="640"></canvas>
+    </div>
+
+    <!-- STUDIO SCREEN -->
+    <div id="studio-screen" class="screen">
+        <div class="studio-sidebar">
+            <h2 class="font-serif" style="color:#C5B358; margin-bottom: 20px;">Bouquet Studio</h2>
+            
+            <div class="studio-section">
+                <h3>1. Bouquet Style</h3>
+                <div id="style-options">
+                    <button class="studio-option-btn active" data-val="classic">Classic Round</button>
+                    <button class="studio-option-btn" data-val="wild">Wild Garden</button>
+                    <button class="studio-option-btn" data-val="luxury">Luxury Bridal</button>
+                </div>
+            </div>
+
+            <div class="studio-section">
+                <h3>2. Wrapping Paper</h3>
+                <div id="wrap-options">
+                    <button class="studio-option-btn" data-val="none">None</button>
+                    <button class="studio-option-btn active" data-val="white">White Matte</button>
+                    <button class="studio-option-btn" data-val="kraft">Kraft Paper</button>
+                    <button class="studio-option-btn" data-val="beige">Beige Linen</button>
+                    <button class="studio-option-btn" data-val="pink">Blush Pink</button>
+                    <button class="studio-option-btn" data-val="sage">Sage Green</button>
+                    <button class="studio-option-btn" data-val="black">Black Luxury</button>
+                </div>
+            </div>
+
+            <div class="studio-section">
+                <h3>3. Ribbon Style & Color</h3>
+                <select id="ribbon-style-select" class="studio-input" style="margin-bottom: 10px;">
+                    <option value="none">No Ribbon</option>
+                    <option value="satin" selected>Satin Ribbon</option>
+                    <option value="velvet">Velvet Ribbon</option>
+                    <option value="lace">Lace Ribbon</option>
+                    <option value="twine">Twine Rustic</option>
+                </select>
+                <input type="color" id="ribbon-color-picker" value="#EC407A" style="width: 100%; height: 40px; border: none; background: #333; cursor: pointer;">
+            </div>
+
+            <div class="studio-section">
+                <h3>4. Vase / Display</h3>
+                <div id="vase-options">
+                    <button class="studio-option-btn active" data-val="handheld">💐 Handheld</button>
+                    <button class="studio-option-btn" data-val="glass">🏺 Glass Vase</button>
+                    <button class="studio-option-btn" data-val="ceramic">🏺 Ceramic Vase</button>
+                    <button class="studio-option-btn" data-val="basket">🌿 Wooden Basket</button>
+                </div>
+            </div>
+            
+            <div class="studio-section">
+                <h3>5. Background Theme</h3>
+                <select id="bg-select" class="studio-input">
+                    <option value="cream">Solid Cream</option>
+                    <option value="polka_pink">Polka Dots (Pink)</option>
+                    <option value="stripes_sage">Stripes (Sage)</option>
+                    <option value="botanical">Botanical Vines</option>
+                    <option value="moving_petals">Moving Petals (Cute)</option>
+                    <option value="moving_stars">Moving Stars (Cute)</option>
+                </select>
+            </div>
+
+            <div class="studio-section">
+                <h3>6. Decorations</h3>
+                <div id="decor-options">
+                    <button class="studio-option-btn" data-val="lights">✨ Fairy Lights</button>
+                    <button class="studio-option-btn" data-val="pearls">Tiny Pearls</button>
+                    <button class="studio-option-btn" data-val="baby">Baby's Breath</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="studio-main">
+            <div class="studio-canvas-wrapper">
+                <canvas id="studioCanvas" width="600" height="800"></canvas>
+            </div>
+            <button id="back-to-game-btn" class="game-btn" style="position: absolute; top: 20px; left: 20px;">Back to Garden</button>
+        </div>
+
+        <div class="studio-right">
+            <div class="studio-section">
+                <h3>✍️ Type Your Own Message</h3>
+                <textarea id="message-input" class="studio-input" rows="5" placeholder="Write something from your heart..."></textarea>
+            </div>
+
+            <div class="studio-section">
+                <h3>7. Stickers (Drag on Bouquet)</h3>
+                <div id="sticker-options">
+                    <button class="studio-option-btn" data-val="🦋">Butterfly</button>
+                    <button class="studio-option-btn" data-val="🌙">Moon</button>
+                    <button class="studio-option-btn" data-val="⭐">Star</button>
+                    <button class="studio-option-btn" data-val="🍃">Leaf</button>
+                    <button class="studio-option-btn" data-val="🕊️">Dove</button>
+                    <button class="studio-option-btn" data-val="✨">Sparkle</button>
+                </div>
+                <button id="clear-stickers" class="studio-option-btn" style="margin-top:10px; width:100%; background:#E53935; color:white;">Clear Stickers</button>
+            </div>
+
+            <div class="studio-section">
+                <h3>8. Save & Share</h3>
+                <button id="save-png" class="studio-option-btn" style="width: 100%; background: #8F9E8B; color: #111; font-weight: bold; margin-bottom: 5px;">Save as PNG</button>
+                <button id="create-another" class="studio-option-btn" style="width: 100%;">Create Another Bouquet</button>
+            </div>
+
+            <div class="meaning-box">
+                <h4>Your Bouquet Symbolizes</h4>
+                <p id="meaning-text">Collect flowers to reveal their meanings...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. HOMEPAGE PIXEL BOUQUET ---
+        const canvasBouquet = document.getElementById('pixel-bouquet');
+        const ctxBouquet = canvasBouquet.getContext('2d');
+        ctxBouquet.imageSmoothingEnabled = false;
+        const C_B = { '.': null, 'Y': '#FFD54F', 'O': '#FFA000', 'y': '#FFEB3B', 'P': '#EC407A', 'p': '#F8BBD0', 'W': '#FFFFFF', 'K': '#37474F', 'G': '#2E7D32', 'g': '#66BB6A', 'S': '#FFF9C4', 'F': '#FFF3E0' };
+        const artB = ["................................................",".......S......................................S","..........S..........................S.........","....................g.G.G.g....................","...................GgGyYyGgG...................","..................GgGyYyYyGgG..................","...................GgGyYyGgG...................","....................g.G.G.g....................","......................PPPP.....................","...................PPPyyPPP....................","...................PPPyyPPP....................","......................PPPP.....................",".....................PPPPPP....................","....................PPPPPPPP...................",".....................PPPPPP....................","..............P..P..P..P..P..P.................","............P.W.P.W.P.W.P.W.P.W...............","..............P..P..P..P..P..P.................","...........OOOOOOOOOOOOOOOOOOOOO...............","..........OYYYYYYYYYYYYYYYYYYYYO...............",".........OYYYYYYYYYYYYYYYYYYYYO................","........OYYYYYYYYYYYYYYYYYYYYO.................",".......OYYYYYYYYYYYYYYYYYYYYO..................","......OYYYYYYYYYYYYYYYYYYYYO...................",".....OYYYYYYYYYYYYYYYYYYYYO....................","....OYYYYYYYYYYYYYYYYYYYYO.....................","...OYYYYYYYYYYYYYYYYYYYYO......................","..OYYYYYYYYYYYYYYYYYYYYO.......................",".OYYYYYYYYYYYYYYYYYYYYO........................","OYYYYYYYYYYYYYYYYYYYYO.........................","YFFFFFFFFFFFFFFFFFFFY..........................","YF....KK......KK....FY.........................","YF....KK......KK....FY.........................","YF..p............p..FY.........................","YF......K....K......FY.........................","YF........KK........FY.........................","YF..................FY.........................","YFFFFFFFFFFFFFFFFFFFY..........................","YYYYYYYYYYYYYYYYYYYY...........................","YYYYYYYYYYYYYYYYYYYY...........................","YYYYYYYYYYYYYYYYYYYY...........................","YYYYYYYYYYYYYYYYYYYY...........................","YYYYYYYYYYYYYYYYYYYY...........................","YYYYYYYYYYYYYYYYYYYY...........................",".OYYYYYYYYYYYYYYYY.............................","..OOOOOOOOOOOOOO...............................","................................................","................................................"];
+        for(let y=0; y<artB.length; y++) for(let x=0; x<artB[y].length; x++) { let c = C_B[artB[y][x]]; if(c) { ctxBouquet.fillStyle = c; ctxBouquet.fillRect(x, y, 1, 1); } }
+
+        // --- 2. FLOATING FLOWERS (Background) ---
+        const flowerColors = [{p:'#FFFFFF',c:'#FFEB3B'},{p:'#F8BBD0',c:'#FFEB3B'},{p:'#F06292',c:'#FFFFFF'},{p:'#BA68C8',c:'#FFFFFF'},{p:'#90CAF9',c:'#FFFFFF'}];
+        function createFloatingFlower() {
+            const fC = document.createElement('canvas'); fC.width = 10; fC.height = 10; const fX = fC.getContext('2d'); fX.imageSmoothingEnabled = false;
+            const col = flowerColors[Math.floor(Math.random()*flowerColors.length)];
+            fX.fillStyle = col.p; fX.fillRect(4,2,2,2); fX.fillRect(2,4,2,2); fX.fillRect(6,4,2,2); fX.fillRect(4,6,2,2);
+            fX.fillStyle = col.c; fX.fillRect(4,4,2,2);
+            fX.fillStyle = '#4CAF50'; fX.fillRect(4,8,1,2);
+            const url = fC.toDataURL(); const img = document.createElement('img'); img.classList.add('floating-flower'); img.src = url;
+            const size = Math.random()*15+10; const left = Math.random()*100; const dur = Math.random()*10+15; const delay = Math.random()*3;
+            img.style.width = `${size}px`; img.style.height = `${size}px`; img.style.left = `${left}vw`; img.style.animationDuration = `${dur}s`; img.style.animationDelay = `${delay}s`;
+            document.getElementById('home-screen').appendChild(img);
+            setTimeout(() => img.remove(), (dur+delay)*1000);
+        }
+        setInterval(createFloatingFlower, 400);
+        for(let i=0; i<20; i++) createFloatingFlower();
+
+        // --- 3. PATH SELECTION ---
+        const pathGrid = document.getElementById('path-grid');
+        const paths = [
+            {name:'red', base:'#E53935', dark:'#C62828', light:'#EF9A9A'}, {name:'orange', base:'#FB8C00', dark:'#EF6C00', light:'#FFCC80'},
+            {name:'yellow', base:'#FDD835', dark:'#F9A825', light:'#FFF59D'}, {name:'green', base:'#43A047', dark:'#2E7D32', light:'#A5D6A7'},
+            {name:'blue', base:'#1E88E5', dark:'#1565C0', light:'#90CAF9'}, {name:'purple', base:'#8E24AA', dark:'#6A1B9A', light:'#CE93D8'},
+            {name:'pink', base:'#EC407A', dark:'#AD1457', light:'#F8BBD0'}, {name:'white', base:'#FFFFFF', dark:'#E0E0E0', light:'#F5F5F5'}
+        ];
+        const roseArt = ["......DDDDDD......","....DDBBBBBBDD....","..DDBBBBBBBBBBDD..","..DBBBLLLLLLBBBD..","..DBLLCCCCCCLLBD..","..DBLLCCCCCCLLBD..","..DBBBLLLLLLBBBD..","..DDBBBBBBBBBBDD..","....DDBBBBBBDD....","......DDDDDD......","........GG........","........GG........","......GGGGGG......","........GG........","........GG........","........G........."];
+        paths.forEach(p => {
+            const item = document.createElement('button'); item.className = 'path-item';
+            const c = document.createElement('canvas'); c.width = 16; c.height = 16; const cx = c.getContext('2d'); cx.imageSmoothingEnabled = false;
+            for(let y=0; y<roseArt.length; y++) for(let x=0; x<roseArt[y].length; x++) {
+                let char = roseArt[y][x]; let col = null;
+                if(char==='D') col = p.dark; else if(char==='B') col = p.base; else if(char==='L') col = p.light; else if(char==='C') col = '#FFEB3B'; else if(char==='G') col = '#2E7D32';
+                if(col) { cx.fillStyle = col; cx.fillRect(x,y,1,1); }
+            }
+            const lbl = document.createElement('span'); lbl.innerText = p.name;
+            item.appendChild(c); item.appendChild(lbl); pathGrid.appendChild(item);
+            item.addEventListener('click', () => {
+                document.getElementById('path-screen').classList.remove('active');
+                document.getElementById('game-screen').classList.add('active');
+                initGame(p.name);
+            });
+        });
+
+        // --- 4. FLOWER DATA & GLOBAL SPRITE GENERATOR ---
+        const PINK_FLOWERS = [ { name: "Pink Rose", meaning: "Admiration, gratitude", type: "rose", color: "#EC407A" }, { name: "Peony", meaning: "Love, prosperity", type: "cluster", color: "#F06292" }, { name: "Cherry Blossom", meaning: "Beauty, transience", type: "blossom", color: "#F8BBD0" }, { name: "Pink Tulip", meaning: "Care, affection", type: "tulip", color: "#EC407A" }, { name: "Carnation", meaning: "Motherly love", type: "rose", color: "#AD1457" }, { name: "Azalea", meaning: "Femininity, softness", type: "bush", color: "#F06292" }, { name: "Pink Gerbera", meaning: "Joy, admiration", type: "daisy", color: "#F48FB1" }, { name: "Cosmos", meaning: "Harmony, peace", type: "daisy", color: "#F8BBD0" }, { name: "Pink Dahlia", meaning: "Kindness, grace", type: "cluster", color: "#EC407A" }, { name: "Camellia", meaning: "Longing, devotion", type: "rose", color: "#AD1457" }, { name: "Pink Lily", meaning: "Prosperity", type: "lily", color: "#F06292" }, { name: "Pink Orchid", meaning: "Joy, elegance", type: "spike", color: "#EC407A" }, { name: "Pink Zinnia", meaning: "Lasting affection", type: "daisy", color: "#F48FB1" }, { name: "Pink Begonia", meaning: "Caution, gratitude", type: "bush", color: "#F06292" }, { name: "Pink Lotus", meaning: "Spiritual awakening", type: "lotus", color: "#F8BBD0" } ];
+        const GREEN_FLOWERS = [ { name: "Green Rose", meaning: "Harmony, renewal, balance", type: "rose", color: "#43A047" }, { name: "Green Carnation", meaning: "Good luck, resilience", type: "rose", color: "#2E7D32" }, { name: "Green Hydrangea", meaning: "Gratitude, abundance", type: "cluster", color: "#66BB6A" }, { name: "Green Chrysanthemum", meaning: "Health, longevity", type: "cluster", color: "#43A047" }, { name: "Green Orchid", meaning: "Rare beauty, nature", type: "spike", color: "#2E7D32" }, { name: "Hellebore", meaning: "Hope, peace", type: "tulip", color: "#66BB6A" }, { name: "Cymbidium Orchid", meaning: "Strength, refinement", type: "spike", color: "#43A047" }, { name: "Green Tulip", meaning: "Fresh beginnings", type: "tulip", color: "#66BB6A" }, { name: "Green Zinnia", meaning: "Endurance, friendship", type: "daisy", color: "#A5D6A7" }, { name: "Green Dahlia", meaning: "Growth, creativity", type: "cluster", color: "#43A047" }, { name: "Green Lily", meaning: "Purity of nature", type: "lily", color: "#66BB6A" }, { name: "Green Rosebud", meaning: "New opportunities", type: "rose", color: "#A5D6A7" }, { name: "Green Anthurium", meaning: "Hospitality, warmth", type: "spike", color: "#2E7D32" }, { name: "Green Petunia", meaning: "Calmness, grounding", type: "bush", color: "#66BB6A" }, { name: "Green Begonia", meaning: "Balance, harmony", type: "bush", color: "#43A047" } ];
+        const BLUE_FLOWERS = [ { name: "Hydrangea", meaning: "Apology, gratitude", type: "cluster", color: "#1E88E5" }, { name: "Cornflower", meaning: "Hope, delicacy", type: "daisy", color: "#42A5F5" }, { name: "Delphinium", meaning: "Positivity, openness", type: "spike", color: "#1565C0" }, { name: "Blue Iris", meaning: "Wisdom, faith", type: "lily", color: "#1E88E5" }, { name: "Morning Glory", meaning: "Love, renewal", type: "spike", color: "#42A5F5" }, { name: "Bluebell", meaning: "Humility, gratitude", type: "tulip", color: "#64B5F6" }, { name: "Gentian", meaning: "Endurance, truth", type: "spike", color: "#1565C0" }, { name: "Plumbago", meaning: "Peace, calm", type: "bush", color: "#42A5F5" }, { name: "Sea Holly", meaning: "Independence, strength", type: "spike", color: "#0D47A1" }, { name: "Forget-Me-Not", meaning: "True love, remembrance", type: "blossom", color: "#64B5F6" }, { name: "Blue Orchid", meaning: "Rare beauty, spirituality", type: "spike", color: "#1565C0" }, { name: "Blue Rose", meaning: "Mystery, the impossible", type: "rose", color: "#1E88E5" }, { name: "Blue Aster", meaning: "Patience, elegance", type: "daisy", color: "#42A5F5" }, { name: "Blue Hibiscus", meaning: "Fleeting beauty", type: "bush", color: "#64B5F6" }, { name: "Blue Petunia", meaning: "Serenity", type: "bush", color: "#90CAF9" } ];
+        const RED_FLOWERS = [ { name: "Red Rose", meaning: "Love, passion", type: "rose", color: "#C62828" }, { name: "Red Tulip", meaning: "Romantic love", type: "tulip", color: "#E53935" }, { name: "Hibiscus", meaning: "Delicate beauty", type: "bush", color: "#D32F2F" }, { name: "Red Poppy", meaning: "Remembrance", type: "tulip", color: "#E53935" }, { name: "Red Carnation", meaning: "Admiration", type: "rose", color: "#B71C1C" }, { name: "Red Dahlia", meaning: "Strength", type: "cluster", color: "#C62828" }, { name: "Red Gerbera", meaning: "Deep love", type: "daisy", color: "#E53935" }, { name: "Anthurium", meaning: "Hospitality", type: "spike", color: "#B71C1C" }, { name: "Red Camellia", meaning: "Devotion", type: "rose", color: "#D32F2F" }, { name: "Red Zinnia", meaning: "Enduring love", type: "daisy", color: "#E53935" }, { name: "Peony", meaning: "Honor, wealth", type: "cluster", color: "#C62828" }, { name: "Amaryllis", meaning: "Pride", type: "lily", color: "#E53935" }, { name: "Red Lily", meaning: "Passion", type: "lily", color: "#D32F2F" }, { name: "Scarlet Sage", meaning: "Wisdom", type: "spike", color: "#B71C1C" }, { name: "Red Chrysanthemum", meaning: "Love and joy", type: "cluster", color: "#C62828" } ];
+        const ORANGE_FLOWERS = [ { name: "Marigold", meaning: "Passion, creativity", type: "marigold", color: "#FB8C00" }, { name: "Orange Lily", meaning: "Confidence, pride", type: "lily", color: "#FF9800" }, { name: "Orange Tulip", meaning: "Energy, enthusiasm", type: "tulip", color: "#FB8C00" }, { name: "Orange Rose", meaning: "Desire, fascination", type: "rose", color: "#FF7043" }, { name: "Orange Gerbera", meaning: "Joy, warmth", type: "daisy", color: "#FFA726" }, { name: "Calendula", meaning: "Healing, protection", type: "blossom", color: "#FB8C00" }, { name: "Orange Dahlia", meaning: "Strength, elegance", type: "cluster", color: "#EF6C00" }, { name: "Orange Zinnia", meaning: "Friendship", type: "daisy", color: "#FF9800" }, { name: "Orange Poppy", meaning: "Imagination, dreams", type: "tulip", color: "#FF7043" }, { name: "Orange Orchid", meaning: "Luxury, boldness", type: "spike", color: "#EF6C00" }, { name: "Tithonia", meaning: "Vitality, happiness", type: "daisy", color: "#FB8C00" }, { name: "Ranunculus", meaning: "Radiance, charm", type: "rose", color: "#FF9800" }, { name: "Orange Cosmos", meaning: "Harmony, positivity", type: "daisy", color: "#FFA726" }, { name: "Orange Carnation", meaning: "Admiration", type: "rose", color: "#FF7043" }, { name: "Orange Begonia", meaning: "Cheerfulness", type: "bush", color: "#FB8C00" } ];
+        const YELLOW_FLOWERS = [ { name: "Sunflower", meaning: "Happiness, loyalty", type: "sunflower", color: "#FDD835" }, { name: "Daffodil", meaning: "New beginnings", type: "daffodil", color: "#FFF176" }, { name: "Yellow Rose", meaning: "Friendship, joy", type: "rose", color: "#FBC02D" }, { name: "Marigold", meaning: "Positivity, remembrance", type: "marigold", color: "#FDD835" }, { name: "Yellow Tulip", meaning: "Cheerfulness", type: "tulip", color: "#FFF176" }, { name: "Chrysanthemum", meaning: "Optimism", type: "cluster", color: "#FBC02D" }, { name: "Ranunculus", meaning: "Radiance", type: "rose", color: "#FDD835" }, { name: "Coreopsis", meaning: "Always cheerful", type: "daisy", color: "#FFF59D" }, { name: "Yellow Iris", meaning: "Passion, wisdom", type: "lily", color: "#FBC02D" }, { name: "Yellow Zinnia", meaning: "Endurance", type: "daisy", color: "#FDD835" }, { name: "Yellow Lily", meaning: "Gratitude", type: "lily", color: "#FFF176" }, { name: "Forsythia", meaning: "Anticipation", type: "bush", color: "#FBC02D" }, { name: "Goldenrod", meaning: "Good fortune", type: "spike", color: "#F9A825" }, { name: "Buttercup", meaning: "Joy", type: "buttercup", color: "#FFF59D" }, { name: "Yarrow", meaning: "Healing", type: "cluster", color: "#FDD835" } ];
+        const PURPLE_FLOWERS = [ { name: "Lavender", meaning: "Calm, devotion", type: "lavender", color: "#8E24AA" }, { name: "Lilac", meaning: "First love, nostalgia", type: "cluster", color: "#AB47BC" }, { name: "Violet", meaning: "Modesty, loyalty", type: "blossom", color: "#6A1B9A" }, { name: "Purple Orchid", meaning: "Admiration, royalty", type: "orchid", color: "#8E24AA" }, { name: "Iris", meaning: "Wisdom, respect", type: "iris", color: "#6A1B9A" }, { name: "Allium", meaning: "Unity, patience", type: "allium", color: "#AB47BC" }, { name: "Wisteria", meaning: "Romance, longevity", type: "wisteria", color: "#8E24AA" }, { name: "Purple Petunia", meaning: "Mystery, charm", type: "tulip", color: "#AB47BC" }, { name: "Clematis", meaning: "Ingenuity, mental beauty", type: "clematis", color: "#6A1B9A" }, { name: "Hyacinth", meaning: "Sorrow, forgiveness", type: "hyacinth", color: "#8E24AA" }, { name: "Purple Rose", meaning: "Enchantment", type: "rose", color: "#6A1B9A" }, { name: "Purple Aster", meaning: "Faith, wisdom", type: "daisy", color: "#AB47BC" }, { name: "Verbena", meaning: "Healing, creativity", type: "spike", color: "#8E24AA" }, { name: "Purple Tulip", meaning: "Royalty", type: "tulip", color: "#6A1B9A" }, { name: "Purple Freesia", meaning: "Trust", type: "freesia", color: "#AB47BC" } ];
+        const WHITE_FLOWERS = [ { name: "White Lily", meaning: "Purity, renewal", type: "lily", color: "#FFFFFF" }, { name: "White Rose", meaning: "Peace, innocence", type: "rose", color: "#F5F5F5" }, { name: "Jasmine", meaning: "Love, beauty", type: "blossom", color: "#FFFFFF" }, { name: "Gardenia", meaning: "Grace, purity", type: "rose", color: "#FAFAFA" }, { name: "White Tulip", meaning: "Forgiveness", type: "tulip", color: "#F5F5F5" }, { name: "White Orchid", meaning: "Elegance", type: "orchid", color: "#FFFFFF" }, { name: "Daisy", meaning: "Innocence, joy", type: "daisy", color: "#FFFFFF" }, { name: "Camellia", meaning: "Admiration", type: "rose", color: "#FAFAFA" }, { name: "Magnolia", meaning: "Dignity", type: "tulip", color: "#F5F5F5" }, { name: "Calla Lily", meaning: "Faith, purity", type: "lily", color: "#FFFFFF" }, { name: "Baby's Breath", meaning: "Everlasting love", type: "blossom", color: "#FAFAFA" }, { name: "Stephanotis", meaning: "Marriage happiness", type: "blossom", color: "#FFFFFF" }, { name: "Snowdrop", meaning: "Hope", type: "tulip", color: "#F5F5F5" }, { name: "White Carnation", meaning: "Pure love", type: "rose", color: "#FAFAFA" }, { name: "White Chrysanthemum", meaning: "Truth", type: "cluster", color: "#FFFFFF" } ];
+
+        function getFlowerList(theme) {
+            if (theme === 'green') return GREEN_FLOWERS;
+            if (theme === 'blue') return BLUE_FLOWERS;
+            if (theme === 'red') return RED_FLOWERS;
+            if (theme === 'orange') return ORANGE_FLOWERS;
+            if (theme === 'yellow') return YELLOW_FLOWERS;
+            if (theme === 'purple') return PURPLE_FLOWERS;
+            if (theme === 'white') return WHITE_FLOWERS;
+            return PINK_FLOWERS;
+        }
+
+        function getPalette(theme) {
+            if(theme === 'green') return { d: '#1B5E20', m: '#388E3C', b: '#43A047', l: '#81C784', h: '#C8E6C9', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'blue') return { d: '#0D47A1', m: '#1565C0', b: '#1E88E5', l: '#64B5F6', h: '#BBDEFB', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'red') return { d: '#7f0000', m: '#B71C1C', b: '#D32F2F', l: '#EF5350', h: '#FFCDD2', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'orange') return { d: '#BF360C', m: '#D84315', b: '#FF5722', l: '#FF8A65', h: '#FFCCBC', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'yellow') return { d: '#F57F17', m: '#F9A825', b: '#FDD835', l: '#FFF176', h: '#FFFDE7', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'purple') return { d: '#4A148C', m: '#6A1B9A', b: '#8E24AA', l: '#BA68C8', h: '#E1BEE7', y: '#FFEB3B', yd: '#FBC02D' };
+            else if(theme === 'white') return { d: '#546E7A', m: '#78909C', b: '#B0BEC5', l: '#CFD8DC', h: '#FFFFFF', y: '#FFEB3B', yd: '#FBC02D' };
+            else return { d: '#AD1457', m: '#C2185B', b: '#EC407A', l: '#F8BBD0', h: '#FCE4EC', y: '#FFEB3B', yd: '#FBC02D' };
+        }
+
+        // GLOBAL FLOWER SPRITES FOR STUDIO
+        let allSprites = {};
+        function generateAllFlowerSprites() {
+            ['pink', 'green', 'blue', 'red', 'orange', 'yellow', 'purple', 'white'].forEach(theme => {
+                let flowerList = getFlowerList(theme);
+                let palette = getPalette(theme);
+                flowerList.forEach(f => {
+                    let fC = document.createElement('canvas'); fC.width = 32; fC.height = 32; let fX = fC.getContext('2d'); fX.imageSmoothingEnabled = false;
+                    fX.fillStyle = '#1B5E20'; fX.fillRect(15, 14, 3, 16); fX.fillStyle = '#4CAF50'; fX.fillRect(15, 14, 1, 16);
+                    fX.fillStyle = '#1B5E20'; fX.fillRect(10, 18, 6, 3); fX.fillRect(16, 24, 6, 3); fX.fillStyle = '#4CAF50'; fX.fillRect(10, 18, 2, 3); fX.fillRect(16, 24, 2, 3); fX.fillStyle = '#81C784'; fX.fillRect(11, 18, 1, 1); fX.fillRect(17, 24, 1, 1);
+
+                    if(f.type === 'sunflower') { fX.fillStyle = '#F57F17'; fX.fillRect(14, 0, 4, 10); fX.fillRect(14, 22, 4, 10); fX.fillRect(0, 14, 10, 4); fX.fillRect(22, 14, 10, 4); fX.fillRect(4, 4, 8, 8); fX.fillRect(20, 4, 8, 8); fX.fillRect(4, 20, 8, 8); fX.fillRect(20, 20, 8, 8); fX.fillStyle = '#FDD835'; fX.fillRect(15, 2, 2, 8); fX.fillRect(2, 15, 8, 2); fX.fillStyle = '#5D4037'; fX.fillRect(10, 10, 12, 12); fX.fillStyle = '#795548'; fX.fillRect(11, 11, 10, 10); fX.fillStyle = '#8D6E63'; fX.fillRect(12, 12, 8, 8); fX.fillStyle = '#A1887F'; fX.fillRect(13, 13, 6, 6); }
+                    else if(f.type === 'daffodil') { fX.fillStyle = '#F9A825'; fX.fillRect(14, 4, 4, 8); fX.fillRect(4, 14, 8, 4); fX.fillRect(20, 14, 8, 4); fX.fillRect(14, 20, 4, 8); fX.fillRect(7, 7, 6, 6); fX.fillRect(19, 7, 6, 6); fX.fillRect(7, 19, 6, 6); fX.fillRect(19, 19, 6, 6); fX.fillStyle = '#FFF176'; fX.fillRect(15, 5, 2, 6); fX.fillRect(5, 15, 6, 2); fX.fillRect(21, 15, 6, 2); fX.fillRect(15, 21, 2, 6); fX.fillStyle = '#FF9800'; fX.fillRect(11, 11, 10, 10); fX.fillStyle = '#FFC107'; fX.fillRect(12, 12, 8, 8); fX.fillStyle = '#FFEB3B'; fX.fillRect(13, 13, 6, 6); }
+                    else if(f.type === 'marigold') { const puffs = [{x: 6, y: 6, c: palette.d}, {x: 18, y: 6, c: palette.m}, {x: 6, y: 18, c: palette.m}, {x: 18, y: 18, c: palette.b}, {x: 12, y: 12, c: palette.b}, {x: 14, y: 16, c: palette.l}, {x: 9, y: 14, c: palette.l}, {x: 16, y: 9, c: palette.h}]; puffs.forEach(p => { fX.fillStyle = p.c; fX.fillRect(p.x, p.y, 10, 10); fX.fillRect(p.x+1, p.y-1, 8, 1); fX.fillRect(p.x-1, p.y+1, 1, 8); }); fX.fillStyle = palette.yd; fX.fillRect(14, 14, 4, 4); fX.fillStyle = palette.y; fX.fillRect(15, 15, 2, 2); }
+                    else if(f.type === 'buttercup') { fX.fillStyle = palette.d; fX.fillRect(8, 8, 16, 16); fX.fillStyle = palette.m; fX.fillRect(9, 9, 14, 14); fX.fillStyle = palette.b; fX.fillRect(10, 10, 12, 12); fX.fillStyle = palette.l; fX.fillRect(11, 11, 10, 10); fX.fillStyle = palette.h; fX.fillRect(12, 12, 8, 8); fX.fillStyle = '#FFFFFF'; fX.fillRect(13, 13, 3, 3); }
+                    else if(f.type === 'lavender') { fX.fillStyle = palette.m; for(let y=2; y<16; y+=3) { fX.fillRect(13, y, 6, 2); fX.fillRect(15, y+1, 2, 1); } fX.fillStyle = palette.l; for(let y=4; y<16; y+=3) { fX.fillRect(14, y, 2, 1); } fX.fillStyle = palette.d; for(let y=3; y<16; y+=3) { fX.fillRect(17, y, 2, 1); } }
+                    else if(f.type === 'allium') { fX.fillStyle = palette.m; fX.beginPath(); fX.arc(16, 10, 8, 0, Math.PI*2); fX.fill(); fX.fillStyle = palette.d; for(let i=-6; i<6; i+=2) { for(let j=-6; j<6; j+=2) { if(i*i+j*j<40) fX.fillRect(16+i, 10+j, 1, 1); } } fX.fillStyle = palette.l; for(let i=-4; i<4; i+=2) { for(let j=-4; j<4; j+=2) { if(i*i+j*j<20) fX.fillRect(16+i, 10+j, 1, 1); } } fX.fillStyle = palette.h; fX.fillRect(15, 9, 2, 2); }
+                    else if(f.type === 'wisteria') { fX.fillStyle = palette.l; fX.fillRect(10, 4, 12, 4); fX.fillRect(8, 8, 16, 4); fX.fillRect(6, 12, 20, 4); fX.fillRect(12, 16, 8, 4); fX.fillStyle = palette.m; fX.fillRect(10, 6, 2, 2); fX.fillRect(14, 6, 2, 2); fX.fillRect(18, 6, 2, 2); fX.fillRect(8, 10, 2, 2); fX.fillRect(12, 10, 2, 2); fX.fillRect(16, 10, 2, 2); fX.fillRect(20, 10, 2, 2); fX.fillRect(6, 14, 2, 2); fX.fillRect(10, 14, 2, 2); fX.fillRect(14, 14, 2, 2); fX.fillRect(18, 14, 2, 2); fX.fillRect(22, 14, 2, 2); fX.fillStyle = palette.h; fX.fillRect(14, 6, 1, 1); fX.fillRect(12, 10, 1, 1); fX.fillRect(14, 14, 1, 1); }
+                    else if(f.type === 'iris') { fX.fillStyle = palette.d; fX.fillRect(6, 6, 20, 16); fX.fillStyle = palette.m; fX.fillRect(8, 8, 16, 12); fX.fillStyle = palette.b; fX.fillRect(10, 10, 12, 8); fX.fillStyle = palette.y; fX.fillRect(14, 12, 4, 4); fX.fillStyle = palette.l; fX.fillRect(10, 10, 2, 8); fX.fillRect(20, 10, 2, 8); fX.fillStyle = palette.h; fX.fillRect(10, 10, 1, 4); }
+                    else if(f.type === 'orchid') { fX.fillStyle = palette.d; fX.fillRect(8, 6, 16, 16); fX.fillStyle = palette.m; fX.fillRect(10, 8, 12, 12); fX.fillStyle = palette.b; fX.fillRect(12, 10, 8, 8); fX.fillStyle = palette.y; fX.fillRect(14, 12, 4, 4); fX.fillStyle = palette.l; fX.fillRect(10, 8, 12, 1); fX.fillStyle = palette.h; fX.fillRect(12, 10, 2, 2); }
+                    else if(f.type === 'clematis') { fX.fillStyle = palette.d; fX.fillRect(14, 4, 4, 8); fX.fillRect(4, 14, 8, 4); fX.fillRect(20, 14, 8, 4); fX.fillRect(6, 6, 6, 6); fX.fillRect(20, 6, 6, 6); fX.fillRect(6, 20, 6, 6); fX.fillRect(20, 20, 6, 6); fX.fillStyle = palette.m; fX.fillRect(15, 5, 2, 6); fX.fillRect(5, 15, 6, 2); fX.fillRect(21, 15, 6, 2); fX.fillStyle = palette.l; fX.fillRect(7, 7, 4, 4); fX.fillRect(21, 7, 4, 4); fX.fillRect(7, 21, 4, 4); fX.fillRect(21, 21, 4, 4); fX.fillStyle = palette.h; fX.fillRect(8, 8, 2, 2); }
+                    else if(f.type === 'hyacinth') { fX.fillStyle = palette.d; fX.fillRect(8, 4, 16, 20); fX.fillStyle = palette.m; for(let y=4; y<24; y+=4) { fX.fillRect(8, y, 4, 2); fX.fillRect(14, y+2, 4, 2); fX.fillRect(20, y, 4, 2); } fX.fillStyle = palette.b; for(let y=6; y<24; y+=4) { fX.fillRect(10, y, 2, 1); fX.fillRect(16, y, 2, 1); fX.fillRect(22, y, 2, 1); } fX.fillStyle = palette.h; fX.fillRect(10, 6, 1, 1); fX.fillRect(16, 10, 1, 1); }
+                    else if(f.type === 'freesia') { fX.fillStyle = palette.d; fX.fillRect(10, 4, 12, 4); fX.fillRect(12, 8, 8, 4); fX.fillRect(14, 12, 4, 4); fX.fillStyle = palette.m; fX.fillRect(11, 5, 10, 2); fX.fillRect(13, 9, 6, 2); fX.fillStyle = palette.l; fX.fillRect(12, 6, 8, 1); fX.fillRect(14, 10, 4, 1); fX.fillStyle = palette.h; fX.fillRect(12, 6, 2, 1); }
+                    else if(f.type === 'rose') { fX.fillStyle = palette.d; fX.fillRect(10, 8, 12, 12); fX.fillRect(8, 10, 16, 8); fX.fillStyle = palette.m; fX.fillRect(11, 9, 10, 10); fX.fillRect(9, 11, 14, 6); fX.fillStyle = palette.b; fX.fillRect(12, 10, 8, 8); fX.fillRect(10, 12, 12, 4); fX.fillStyle = palette.l; fX.fillRect(13, 11, 6, 6); fX.fillRect(11, 13, 10, 2); fX.fillStyle = palette.h; fX.fillRect(13, 11, 3, 3); fX.fillStyle = palette.d; fX.fillRect(15, 12, 2, 4); fX.fillRect(14, 15, 4, 1); fX.fillStyle = palette.m; fX.fillRect(16, 13, 1, 1); }
+                    else if(f.type === 'tulip') { fX.fillStyle = palette.d; fX.fillRect(9, 6, 14, 14); fX.fillStyle = palette.m; fX.fillRect(10, 7, 12, 12); fX.fillStyle = palette.b; fX.fillRect(11, 8, 10, 10); fX.fillStyle = palette.l; fX.fillRect(11, 8, 2, 10); fX.fillRect(19, 8, 2, 10); fX.fillStyle = palette.h; fX.fillRect(12, 9, 1, 8); fX.fillStyle = palette.d; fX.fillRect(15, 8, 2, 10); }
+                    else if(f.type === 'daisy') { fX.fillStyle = palette.l; fX.fillRect(14, 2, 4, 8); fX.fillRect(14, 22, 4, 8); fX.fillRect(2, 14, 8, 4); fX.fillRect(22, 14, 8, 4); fX.fillRect(6, 6, 6, 6); fX.fillRect(20, 6, 6, 6); fX.fillRect(6, 20, 6, 6); fX.fillRect(20, 20, 6, 6); fX.fillStyle = palette.h; fX.fillRect(14, 2, 2, 8); fX.fillRect(2, 14, 8, 2); fX.fillStyle = palette.m; fX.fillRect(14, 10, 4, 2); fX.fillRect(14, 20, 4, 2); fX.fillRect(10, 14, 2, 4); fX.fillRect(20, 14, 2, 4); fX.fillStyle = palette.yd; fX.fillRect(12, 12, 8, 8); fX.fillStyle = palette.y; fX.fillRect(13, 13, 6, 6); fX.fillStyle = '#FFF59D'; fX.fillRect(14, 14, 2, 2); }
+                    else if(f.type === 'cluster' || f.type === 'bush') { const puffs = [{x: 8, y: 8, c: palette.d}, {x: 18, y: 8, c: palette.m}, {x: 8, y: 18, c: palette.m}, {x: 18, y: 18, c: palette.b}, {x: 13, y: 12, c: palette.b}, {x: 15, y: 17, c: palette.l}, {x: 11, y: 15, c: palette.l}, {x: 17, y: 11, c: palette.h}]; puffs.forEach(p => { fX.fillStyle = p.c; fX.fillRect(p.x, p.y, 8, 8); fX.fillRect(p.x+1, p.y-1, 6, 1); }); fX.fillStyle = palette.h; fX.fillRect(13, 13, 3, 3); }
+                    else if(f.type === 'spike') { fX.fillStyle = palette.d; fX.fillRect(15, 2, 2, 18); fX.fillStyle = palette.d; fX.fillRect(12, 4, 8, 6); fX.fillStyle = palette.b; fX.fillRect(13, 5, 6, 4); fX.fillStyle = palette.l; fX.fillRect(13, 5, 6, 1); fX.fillStyle = palette.y; fX.fillRect(15, 6, 2, 2); fX.fillStyle = palette.d; fX.fillRect(18, 10, 8, 6); fX.fillStyle = palette.b; fX.fillRect(19, 11, 6, 4); fX.fillStyle = palette.l; fX.fillRect(19, 11, 1, 4); fX.fillStyle = palette.y; fX.fillRect(21, 12, 2, 2); fX.fillStyle = palette.d; fX.fillRect(10, 16, 8, 6); fX.fillStyle = palette.b; fX.fillRect(11, 17, 6, 4); fX.fillStyle = palette.l; fX.fillRect(11, 17, 6, 1); fX.fillStyle = palette.y; fX.fillRect(13, 18, 2, 2); }
+                    else if(f.type === 'lily') { fX.fillStyle = palette.d; fX.fillRect(14, 4, 4, 12); fX.fillRect(4, 14, 12, 4); fX.fillRect(16, 14, 12, 4); fX.fillRect(14, 16, 4, 12); fX.fillRect(7, 7, 6, 6); fX.fillRect(19, 7, 6, 6); fX.fillRect(7, 19, 6, 6); fX.fillRect(19, 19, 6, 6); fX.fillStyle = palette.m; fX.fillRect(15, 5, 2, 10); fX.fillRect(5, 15, 10, 2); fX.fillRect(17, 15, 10, 2); fX.fillRect(15, 17, 2, 10); fX.fillRect(8, 8, 4, 4); fX.fillRect(20, 8, 4, 4); fX.fillRect(8, 20, 4, 4); fX.fillRect(20, 20, 4, 4); fX.fillStyle = palette.l; fX.fillRect(15, 6, 1, 8); fX.fillRect(6, 15, 8, 1); fX.fillRect(18, 15, 8, 1); fX.fillRect(15, 18, 1, 8); fX.fillStyle = palette.y; fX.fillRect(14, 14, 4, 4); fX.fillStyle = '#FFF59D'; fX.fillRect(15, 15, 2, 2); }
+                    else if(f.type === 'lotus') { fX.fillStyle = palette.d; fX.fillRect(6, 12, 20, 6); fX.fillStyle = palette.m; fX.fillRect(8, 10, 16, 10); fX.fillStyle = palette.b; fX.fillRect(10, 8, 12, 14); fX.fillStyle = palette.l; fX.fillRect(12, 6, 8, 18); fX.fillStyle = palette.h; fX.fillRect(13, 7, 6, 16); fX.fillStyle = palette.y; fX.fillRect(14, 12, 4, 4); }
+                    else if(f.type === 'blossom') { fX.fillStyle = palette.d; fX.fillRect(14, 4, 4, 8); fX.fillRect(4, 14, 8, 4); fX.fillRect(20, 14, 8, 4); fX.fillRect(8, 8, 6, 6); fX.fillRect(18, 8, 6, 6); fX.fillRect(8, 18, 6, 6); fX.fillRect(18, 18, 6, 6); fX.fillRect(14, 20, 4, 8); fX.fillStyle = palette.m; fX.fillRect(15, 5, 2, 6); fX.fillRect(5, 15, 6, 2); fX.fillRect(21, 15, 6, 2); fX.fillRect(9, 9, 4, 4); fX.fillRect(19, 9, 4, 4); fX.fillRect(9, 19, 4, 4); fX.fillRect(19, 19, 4, 4); fX.fillRect(15, 21, 2, 6); fX.fillStyle = palette.l; fX.fillRect(15, 5, 1, 6); fX.fillRect(5, 15, 6, 1); fX.fillRect(21, 15, 6, 1); fX.fillRect(9, 9, 1, 4); fX.fillRect(19, 9, 1, 4); fX.fillStyle = palette.h; fX.fillRect(15, 6, 1, 2); fX.fillRect(6, 15, 2, 1); fX.fillRect(22, 15, 2, 1); fX.fillStyle = palette.y; fX.fillRect(14, 14, 4, 4); }
+                    allSprites[f.name] = fC;
+                });
+            });
+        }
+        generateAllFlowerSprites(); 
+
+        // --- 5. GAME LOGIC ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const tipName = document.getElementById('tipName');
+        const tipMeaning = document.getElementById('tipMeaning');
+        const basketCount = document.getElementById('basketCount');
+
+        let basket = []; 
+        let worldMouseX = 0, worldMouseY = 0;
+        let hoveredFlower = null;
+        let keys = {};
+        let gameStarted = false;
+        let gameLoopRunning = false;
+        let camY = 0;
+        let currentTheme = 'white';
+        let sprites = {}; 
+        let time = 0;
+        let flowerIndex = 0;
+        let lightningTimer = 0;
+        let lightningAlpha = 0;
+
+        const player = { x: 0, y: 0, speed: 3, dir: 'down', frame: 0, frameTimer: 0, moving: false };
+
+        let worldObjects = [];
+        let nextChunkUp = 200;
+        let nextChunkDown = -200;
+
+        const pinkPetals = [], greenLeaves = [], blueDust = [], redPetals = [], orangeLeaves = [], orangeDust = [], yellowPetals = [], purpleDust = [], whiteDust = [], floatingDucks = [];
+        for(let i=0; i<80; i++) pinkPetals.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.5+0.2, vx: Math.random()*0.5-0.25, size: Math.random()*4+2, rot: Math.random()*Math.PI });
+        for(let i=0; i<80; i++) greenLeaves.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.5+0.2, vx: Math.random()*0.5-0.25, size: Math.random()*3+2, rot: Math.random()*Math.PI });
+        for(let i=0; i<100; i++) blueDust.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.5+0.1, vx: Math.random()*0.4-0.2, size: Math.random()*2+1, alpha: Math.random()*0.5+0.3 });
+        for(let i=0; i<100; i++) redPetals.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.6+0.3, vx: Math.random()*0.6-0.3, size: Math.random()*4+2, rot: Math.random()*Math.PI });
+        for(let i=0; i<100; i++) orangeLeaves.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.5+0.2, vx: Math.random()*0.5-0.25, size: Math.random()*4+2, rot: Math.random()*Math.PI, color: ['#E65100','#EF6C00','#F57C00','#FF9800'][Math.floor(Math.random()*4)] });
+        for(let i=0; i<80; i++) orangeDust.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.4+0.1, vx: Math.random()*0.3-0.15, size: Math.random()*2+1, alpha: Math.random()*0.6+0.2 });
+        for(let i=0; i<100; i++) yellowPetals.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.4+0.2, vx: Math.random()*0.4-0.2, size: Math.random()*4+2, rot: Math.random()*Math.PI });
+        for(let i=0; i<150; i++) purpleDust.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.3+0.1, vx: Math.random()*0.3-0.1, size: Math.random()*2+1, alpha: Math.random()*0.8+0.2, color: ['#E1BEE7','#CE93D8','#BA68C8','#FFEB3B'][Math.floor(Math.random()*4)] });
+        for(let i=0; i<150; i++) whiteDust.push({ x: Math.random()*960, y: Math.random()*640, vy: Math.random()*0.2+0.1, vx: Math.random()*0.2-0.05, size: Math.random()*2+1, alpha: Math.random()*0.8+0.2 });
+        for(let i=0; i<3; i++) floatingDucks.push({ x: Math.random()*960, y: Math.random()*200, vx: Math.random()*0.5+0.2, bob: Math.random()*Math.PI*2 });
+
+        function px(x, y, color, w=1, h=1) {
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+        }
+
+        function initSprites(theme) {
+            currentTheme = theme;
+            document.getElementById('game-title').innerText = theme.charAt(0).toUpperCase() + theme.slice(1) + " Road";
+            let btnColor = theme === 'green' ? '#43A047' : (theme === 'blue' ? '#1E88E5' : (theme === 'red' ? '#E53935' : (theme === 'orange' ? '#FB8C00' : (theme === 'yellow' ? '#FDD835' : (theme === 'purple' ? '#8E24AA' : (theme === 'white' ? '#FFFFFF' : '#EC407A'))))));
+            document.querySelector('.basket-count').style.background = btnColor;
+            document.getElementById('tooltip').querySelector('h3').style.color = theme === 'green' ? '#2E7D32' : (theme === 'blue' ? '#1565C0' : (theme === 'red' ? '#C62828' : (theme === 'orange' ? '#EF6C00' : (theme === 'yellow' ? '#F9A825' : (theme === 'purple' ? '#6A1B9A' : (theme === 'white' ? '#546E7A' : '#AD1457'))))));
+
+            sprites = {}; 
+
+            // 1. Ground Tile (Hyper-3D)
+            let gC = document.createElement('canvas'); gC.width = 200; gC.height = 200; let gX = gC.getContext('2d'); gX.imageSmoothingEnabled = false;
+            if(theme === 'green') { gX.fillStyle = '#7CB342'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<500; i++) { gX.fillStyle = '#9CCC65'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#558B2F'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else if(theme === 'blue') { gX.fillStyle = '#263238'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<300; i++) { gX.fillStyle = '#37474F'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#1A237E'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else if(theme === 'red') { gX.fillStyle = '#4E342E'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<500; i++) { gX.fillStyle = '#3E2723'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#795548'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else if(theme === 'orange') { gX.fillStyle = '#8D6E63'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<500; i++) { gX.fillStyle = '#A1887F'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#5D4037'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else if(theme === 'yellow') {
+                gX.fillStyle = '#D4E157'; gX.fillRect(0, 0, 200, 200);
+                for(let y=0; y<200; y+=40) { gX.fillStyle = '#C0CA33'; gX.beginPath(); gX.moveTo(0, y); gX.bezierCurveTo(50, y-15, 150, y+15, 200, y); gX.lineTo(200, y+40); gX.lineTo(0, y+40); gX.fill(); gX.fillStyle = '#FFF176'; gX.beginPath(); gX.moveTo(0, y+2); gX.bezierCurveTo(50, y-13, 150, y+17, 200, y+2); gX.lineTo(200, y+6); gX.bezierCurveTo(150, y+21, 50, y-9, 0, y+6); gX.fill(); }
+                for(let i=0; i<200; i++) { gX.fillStyle = '#FBC02D'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); }
+            }
+            else if(theme === 'purple') { gX.fillStyle = '#311B92'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<300; i++) { gX.fillStyle = '#4527A0'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#1A237E'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else if(theme === 'white') { gX.fillStyle = '#E0F7FA'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1200; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<500; i++) { gX.fillStyle = '#FFFFFF'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#B2EBF2'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            else { gX.fillStyle = '#A5D6A7'; gX.fillRect(0, 0, 200, 200); for(let i=0; i<1000; i++) gX.fillRect(Math.random()*200, Math.random()*200, 2, 2); for(let i=0; i<500; i++) { gX.fillStyle = '#C8E6C9'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 4); gX.fillStyle = '#81C784'; gX.fillRect(Math.random()*200, Math.random()*200, 1, 1); } }
+            sprites.grass = gC;
+
+            // 2. Tree Sprite (Hyper-3D)
+            let tC = document.createElement('canvas'); tC.width = 150; tC.height = 150; let tX = tC.getContext('2d'); tX.imageSmoothingEnabled = false;
+            let colors;
+            if(theme === 'green') colors = ['#1B5E20', '#2E7D32', '#388E3C', '#43A047', '#66BB6A', '#81C784', '#A5D6A7'];
+            else if(theme === 'blue') colors = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9'];
+            else if(theme === 'red') colors = ['#3E2723', '#4E342E', '#5D4037', '#795548', '#8D6E63', '#A1887F', '#D7CCC8'];
+            else if(theme === 'orange') colors = ['#BF360C', '#D84315', '#E64A19', '#FF5722', '#FF7043', '#FF8A65', '#FFAB91'];
+            else if(theme === 'yellow') colors = ['#F57F17', '#F9A825', '#FBC02D', '#FDD835', '#FFF176', '#FFEE58', '#FFFDE7'];
+            else if(theme === 'purple') colors = ['#1A237E', '#311B92', '#4527A0', '#6A1B9A', '#8E24AA', '#AB47BC', '#CE93D8'];
+            else if(theme === 'white') colors = ['#37474F', '#546E7A', '#78909C', '#90A4AE', '#B0BEC5', '#CFD8DC', '#FFFFFF'];
+            else colors = ['#AD1457', '#C2185B', '#D81B60', '#EC407A', '#F06292', '#F8BBD0', '#FCE4EC'];
+
+            if(theme === 'red') {
+                tX.fillStyle = '#3E2723'; tX.fillRect(65, 80, 20, 70); tX.fillRect(50, 60, 10, 40); tX.fillRect(90, 40, 10, 50);
+                for(let i=0; i<12; i++) { let cx = 40 + Math.random()*70; let cy = 30 + Math.random()*50; let r = 8 + Math.random()*8; tX.fillStyle = '#B71C1C'; tX.beginPath(); tX.arc(cx, cy, r, 0, Math.PI*2); tX.fill(); tX.fillStyle = '#E53935'; tX.beginPath(); tX.arc(cx-1, cy-1, r*0.6, 0, Math.PI*2); tX.fill(); }
+            } else if(theme === 'purple') {
+                tX.fillStyle = '#1A237E'; tX.fillRect(70, 80, 10, 70); tX.fillRect(60, 60, 8, 40); tX.fillRect(85, 40, 8, 50); tX.fillRect(90, 90, 10, 30);
+                tX.fillStyle = '#311B92'; tX.fillRect(72, 80, 4, 70);
+                for(let i=0; i<15; i++) { let cx = 50 + Math.random()*50; let cy = 20 + Math.random()*60; let r = 10 + Math.random()*12; tX.fillStyle = '#1A237E'; tX.beginPath(); tX.arc(cx, cy, r, 0, Math.PI*2); tX.fill(); tX.fillStyle = '#4A148C'; tX.beginPath(); tX.arc(cx-1, cy-1, r*0.7, 0, Math.PI*2); tX.fill(); tX.fillStyle = '#7B1FA2'; tX.beginPath(); tX.arc(cx-2, cy-2, r*0.4, 0, Math.PI*2); tX.fill(); }
+            } else if(theme === 'white') {
+                tX.fillStyle = '#5D4037'; tX.fillRect(70, 80, 12, 70); tX.fillRect(50, 80, 10, 60); tX.fillRect(90, 60, 10, 70);
+                tX.fillStyle = '#3E2723'; tX.fillRect(72, 80, 4, 70);
+                for(let i=0; i<15; i++) { let cx = 40 + Math.random()*70; let cy = 20 + Math.random()*80; let r = 10 + Math.random()*12; tX.fillStyle = '#37474F'; tX.beginPath(); tX.arc(cx, cy, r, 0, Math.PI*2); tX.fill(); tX.fillStyle = '#B0BEC5'; tX.beginPath(); tX.arc(cx-1, cy-1, r*0.7, 0, Math.PI*2); tX.fill(); tX.fillStyle = '#FFFFFF'; tX.beginPath(); tX.arc(cx-2, cy-2, r*0.4, 0, Math.PI*2); tX.fill(); }
+            } else {
+                for(let i=0; i<15; i++) { let cx = 75 + (Math.random()-0.5)*80; let cy = 75 + (Math.random()-0.5)*60; let r = 20 + Math.random()*15; for (let y = -r; y <= r; y += 2) { for (let x = -r; x <= r; x += 2) { let dist = Math.sqrt(x*x + y*y); if (dist < r) { let cIdx = Math.floor((dist / r) * 4); cIdx += Math.floor(Math.random() * 2); if (x < -5 && y < -5) cIdx += 2; if (x > 10 && y > 10) cIdx -= 2; cIdx = Math.max(0, Math.min(colors.length - 1, cIdx)); tX.fillStyle = colors[cIdx]; tX.fillRect(cx + x, cy + y, 2, 2); } } } }
+            }
+            sprites.tree = tC;
+
+            // 3. Theme Specific Decor
+            if(theme === 'green') {
+                let hC = document.createElement('canvas'); hC.width = 120; hC.height = 120; let hX = hC.getContext('2d'); hX.imageSmoothingEnabled = false;
+                hX.fillStyle = '#D7CCC8'; hX.fillRect(20, 60, 80, 60); hX.fillStyle = '#A1887F'; hX.fillRect(20, 110, 80, 10); hX.fillStyle = '#BCAAA4'; hX.fillRect(20, 60, 80, 5);
+                hX.fillStyle = '#8D6E63'; for(let i=0; i<6; i++) hX.fillRect(20, 65+i*10, 80, 1); for(let i=0; i<4; i++) hX.fillRect(30+i*20, 60+(i%2)*5, 1, 10); for(let i=0; i<4; i++) hX.fillRect(25+i*20, 80+(i%2)*5, 1, 10);
+                hX.fillStyle = '#795548'; hX.beginPath(); hX.moveTo(10, 65); hX.lineTo(60, 20); hX.lineTo(110, 65); hX.fill(); hX.fillStyle = '#5D4037'; hX.beginPath(); hX.moveTo(60, 20); hX.lineTo(110, 65); hX.lineTo(110, 70); hX.lineTo(60, 25); hX.fill();
+                hX.fillStyle = '#8D6E63'; for(let i=0; i<5; i++) hX.fillRect(15+i*10, 65-i*5, 90-i*20, 2); hX.fillStyle = '#5D4037'; hX.fillRect(50, 80, 20, 40); hX.fillStyle = '#3E2723'; hX.fillRect(50, 80, 5, 40); hX.fillStyle = '#FFD54F'; hX.fillRect(65, 100, 2, 2);
+                hX.fillStyle = '#FFF9C4'; hX.fillRect(75, 70, 15, 15); hX.fillStyle = '#FFF59D'; hX.fillRect(75, 70, 15, 5); hX.fillStyle = '#5D4037'; hX.fillRect(73, 68, 19, 3); hX.fillRect(73, 85, 19, 3); hX.fillRect(73, 68, 3, 20); hX.fillRect(89, 68, 3, 20); hX.fillRect(82, 68, 2, 20); hX.fillRect(73, 77, 19, 2);
+                hX.fillStyle = '#8D6E63'; hX.fillRect(73, 88, 19, 5); hX.fillStyle = '#EC407A'; hX.fillRect(76, 86, 2, 2); hX.fillRect(82, 86, 2, 2); hX.fillRect(88, 86, 2, 2);
+                sprites.house = hC;
+
+                let fC = document.createElement('canvas'); fC.width = 60; fC.height = 60; let fX = fC.getContext('2d'); fX.imageSmoothingEnabled = false;
+                fX.fillStyle = '#8D6E63'; fX.fillRect(5, 10, 10, 50); fX.fillRect(40, 10, 10, 50); fX.fillStyle = '#5D4037'; fX.fillRect(5, 10, 3, 50); fX.fillRect(40, 10, 3, 50);
+                fX.fillStyle = '#8D6E63'; fX.fillRect(5, 20, 45, 5); fX.fillRect(5, 40, 45, 5); fX.fillStyle = '#A1887F'; fX.fillRect(5, 20, 45, 1); fX.fillRect(5, 40, 45, 1);
+                fX.fillStyle = '#2E7D32'; fX.fillRect(10, 15, 2, 20); fX.fillRect(45, 35, 2, 20); fX.fillRect(20, 20, 2, 10); fX.fillStyle = '#43A047'; fX.fillRect(12, 20, 2, 5); fX.fillRect(42, 40, 2, 5);
+                sprites.fence = fC;
+            } else if(theme === 'blue') {
+                let aC = document.createElement('canvas'); aC.width = 300; aC.height = 300; let aX = aC.getContext('2d'); aX.imageSmoothingEnabled = false;
+                aX.fillStyle = '#455A64'; aX.fillRect(40, 100, 60, 200); aX.fillRect(200, 100, 60, 200); aX.fillStyle = '#607D8B'; aX.fillRect(45, 100, 50, 200); aX.fillRect(205, 100, 50, 200); aX.fillStyle = '#78909C'; aX.fillRect(45, 100, 10, 200); aX.fillRect(205, 100, 10, 200);
+                aX.fillStyle = '#455A64'; aX.beginPath(); aX.arc(150, 100, 110, Math.PI, 0); aX.fill(); aX.fillStyle = '#607D8B'; aX.beginPath(); aX.arc(150, 100, 100, Math.PI, 0); aX.fill(); aX.fillStyle = '#78909C'; aX.beginPath(); aX.arc(150, 100, 100, Math.PI, Math.PI*1.1); aX.fill();
+                aX.fillStyle = '#37474F'; for(let i=0; i<10; i++) { aX.fillRect(45, 120+i*18, 50, 2); aX.fillRect(205, 120+i*18, 50, 2); } aX.fillRect(50, 100, 2, 20); aX.fillRect(80, 100, 2, 20); aX.fillRect(210, 100, 2, 20); aX.fillRect(240, 100, 2, 20);
+                aX.fillStyle = '#1A237E'; aX.fillRect(50, 100, 4, 200); aX.fillRect(246, 100, 4, 200); aX.beginPath(); aX.arc(150, 100, 105, Math.PI, 0); aX.lineWidth = 4; aX.strokeStyle = '#1A237E'; aX.stroke();
+                aX.fillStyle = '#42A5F5'; aX.fillRect(51, 100, 2, 200); aX.fillRect(247, 100, 2, 200); aX.beginPath(); aX.arc(150, 100, 106, Math.PI, 0); aX.lineWidth = 2; aX.strokeStyle = '#42A5F5'; aX.stroke();
+                for(let i=0; i<15; i++) { let vx = 50 + Math.random()*200; let vy = 100 + Math.random()*100; if(vx > 80 && vx < 220) vy = 100 - Math.sqrt(110*110 - (150-vx)*(150-vx)) + Math.random()*20; aX.fillStyle = '#0D47A1'; aX.fillRect(vx, vy, 4, 4); aX.fillStyle = '#42A5F5'; aX.fillRect(vx+1, vy+1, 2, 2); aX.fillStyle = '#90CAF9'; aX.fillRect(vx+1, vy+1, 1, 1); }
+                sprites.arch = aC;
+            } else if(theme === 'red') {
+                let rC = document.createElement('canvas'); rC.width = 240; rC.height = 280; let rX = rC.getContext('2d'); rX.imageSmoothingEnabled = false;
+                rX.fillStyle = '#424242'; rX.fillRect(40, 80, 160, 200); rX.fillStyle = '#616161'; rX.fillRect(50, 80, 140, 200); rX.fillStyle = '#757575'; rX.fillRect(50, 80, 10, 200);
+                rX.fillStyle = '#424242'; rX.fillRect(40, 60, 30, 20); rX.fillRect(80, 50, 20, 30); rX.fillRect(140, 40, 30, 40); rX.fillRect(190, 60, 10, 20);
+                rX.fillStyle = '#212121'; rX.beginPath(); rX.arc(120, 180, 40, Math.PI, 0); rX.fill(); rX.fillRect(80, 180, 80, 100); rX.beginPath(); rX.arc(60, 220, 20, Math.PI, 0); rX.fill(); rX.fillRect(40, 220, 40, 60); rX.beginPath(); rX.arc(180, 220, 20, Math.PI, 0); rX.fill(); rX.fillRect(160, 220, 40, 60);
+                rX.fillStyle = '#37474F'; for(let i=0; i<12; i++) { rX.fillRect(50, 90+i*15, 140, 2); rX.fillRect(50+i*12, 80, 2, 200); }
+                rX.fillStyle = '#1B5E20'; rX.fillRect(50, 80, 4, 200); rX.fillRect(186, 80, 4, 200); rX.fillRect(120, 60, 4, 220); rX.beginPath(); rX.arc(120, 180, 45, Math.PI, 0); rX.lineWidth = 4; rX.strokeStyle = '#1B5E20'; rX.stroke();
+                for(let i=0; i<20; i++) { let vx = 50 + Math.random()*140; let vy = 80 + Math.random()*200; if(vx > 80 && vx < 160) vy = 180 - Math.sqrt(40*40 - (120-vx)*(120-vx)) + Math.random()*20; rX.fillStyle = '#7f0000'; rX.fillRect(vx, vy, 6, 6); rX.fillStyle = '#C62828'; rX.fillRect(vx+1, vy+1, 4, 4); rX.fillStyle = '#EF5350'; rX.fillRect(vx+1, vy+1, 2, 2); }
+                sprites.ruin = rC;
+
+                let mC = document.createElement('canvas'); mC.width = 30; mC.height = 40; let mX = mC.getContext('2d'); mX.imageSmoothingEnabled = false;
+                mX.fillStyle = '#ECEFF1'; mX.fillRect(12, 15, 6, 25); mX.fillStyle = '#B71C1C'; mX.beginPath(); mX.arc(15, 15, 15, Math.PI, 0); mX.fill(); mX.fillStyle = '#EF5350'; mX.beginPath(); mX.arc(12, 12, 10, Math.PI, 0); mX.fill();
+                mX.fillStyle = '#FFFFFF'; mX.fillRect(8, 8, 3, 3); mX.fillRect(15, 6, 2, 2); mX.fillRect(20, 10, 2, 2);
+                sprites.mushroom = mC;
+            } else if(theme === 'orange') {
+                let thC = document.createElement('canvas'); thC.width = 300; thC.height = 400; let thX = thC.getContext('2d'); thX.imageSmoothingEnabled = false;
+                thX.fillStyle = '#3E2723'; thX.fillRect(50, 300, 80, 100); thX.fillRect(170, 300, 80, 100);
+                thX.fillStyle = '#5D4037'; thX.fillRect(120, 100, 60, 300); thX.fillStyle = '#3E2723'; thX.fillRect(120, 100, 15, 300); thX.fillStyle = '#795548'; thX.fillRect(165, 100, 15, 300);
+                thX.fillStyle = '#FFEB3B'; thX.fillRect(140, 200, 10, 10); thX.fillRect(160, 200, 10, 10); thX.fillRect(140, 220, 30, 5); thX.fillRect(135, 215, 5, 5); thX.fillRect(170, 215, 5, 5);
+                thX.fillStyle = '#8D6E63'; thX.fillRect(90, 120, 120, 60); thX.fillStyle = '#5D4037'; thX.fillRect(90, 170, 120, 10);
+                thX.fillStyle = '#3E2723'; thX.beginPath(); thX.moveTo(80, 120); thX.lineTo(150, 70); thX.lineTo(220, 120); thX.fill();
+                thX.fillStyle = '#FFEB3B'; thX.fillRect(130, 130, 40, 30); thX.fillStyle = '#5D4037'; thX.fillRect(125, 125, 50, 5); thX.fillRect(125, 160, 50, 5); thX.fillRect(125, 125, 5, 40); thX.fillRect(170, 125, 5, 40);
+                const thColors = ['#BF360C', '#D84315', '#E64A19', '#FF5722', '#FF7043', '#FF8A65', '#FFAB91'];
+                for(let i=0; i<20; i++) { let cx = 150 + (Math.random()-0.5)*200; let cy = 80 + (Math.random()-0.5)*100; let r = 30 + Math.random()*20; for (let y = -r; y <= r; y += 2) { for (let x = -r; x <= r; x += 2) { let dist = Math.sqrt(x*x + y*y); if (dist < r) { let cIdx = Math.floor((dist / r) * 3); cIdx += Math.floor(Math.random() * 2); if (x < -10 && y < -10) cIdx += 2; if (x > 20 && y > 20) cIdx -= 2; cIdx = Math.max(0, Math.min(thColors.length - 1, cIdx)); thX.fillStyle = thColors[cIdx]; thX.fillRect(cx + x, cy + y, 2, 2); } } } }
+                thX.fillStyle = '#FB8C00'; thX.fillRect(80, 150, 8, 12); thX.fillRect(212, 150, 8, 12); thX.fillStyle = '#FFEB3B'; thX.fillRect(82, 152, 4, 8); thX.fillRect(214, 152, 4, 8);
+                sprites.treehouse = thC;
+
+                let pC = document.createElement('canvas'); pC.width = 40; pC.height = 30; let pX = pC.getContext('2d'); pX.imageSmoothingEnabled = false;
+                pX.fillStyle = '#E65100'; pX.beginPath(); pX.ellipse(20, 20, 18, 12, 0, 0, Math.PI*2); pX.fill(); pX.fillStyle = '#EF6C00'; pX.beginPath(); pX.ellipse(18, 18, 14, 10, 0, 0, Math.PI*2); pX.fill(); pX.fillStyle = '#FB8C00'; pX.beginPath(); pX.ellipse(16, 16, 8, 6, 0, 0, Math.PI*2); pX.fill();
+                pX.fillStyle = '#E65100'; pX.fillRect(10, 8, 2, 18); pX.fillRect(20, 8, 2, 18); pX.fillRect(30, 8, 2, 18); pX.fillStyle = '#558B2F'; pX.fillRect(18, 4, 4, 6);
+                sprites.pumpkin = pC;
+
+                let lC = document.createElement('canvas'); lC.width = 20; lC.height = 80; let lX = lC.getContext('2d'); lX.imageSmoothingEnabled = false;
+                lX.fillStyle = '#5D4037'; lX.fillRect(8, 20, 4, 60); lX.fillStyle = '#3E2723'; lX.fillRect(8, 20, 1, 60); lX.fillStyle = '#5D4037'; lX.fillRect(4, 10, 12, 12); lX.fillStyle = '#FFEB3B'; lX.fillRect(6, 12, 8, 8); lX.fillStyle = '#FFC107'; lX.fillRect(6, 18, 8, 2);
+                sprites.lantern_post = lC;
+            } else if(theme === 'yellow') {
+                let gC2 = document.createElement('canvas'); gC2.width = 120; gC2.height = 140; let gX2 = gC2.getContext('2d'); gX2.imageSmoothingEnabled = false;
+                gX2.fillStyle = '#8D6E63'; gX2.beginPath(); gX2.moveTo(10, 60); gX2.lineTo(60, 10); gX2.lineTo(110, 60); gX2.fill();
+                gX2.fillStyle = '#5D4037'; gX2.beginPath(); gX2.moveTo(60, 10); gX2.lineTo(110, 60); gX2.lineTo(110, 65); gX2.lineTo(60, 15); gX2.fill();
+                gX2.fillStyle = '#A1887F'; gX2.fillRect(20, 60, 10, 80); gX2.fillRect(90, 60, 10, 80);
+                gX2.fillStyle = '#D7CCC8'; gX2.fillRect(20, 60, 4, 80); gX2.fillRect(90, 60, 4, 80);
+                gX2.fillStyle = '#8D6E63'; gX2.fillRect(10, 130, 100, 10);
+                gX2.fillStyle = '#2E7D32'; gX2.fillRect(20, 60, 10, 4); gX2.fillRect(20, 70, 10, 2); gX2.fillRect(90, 60, 10, 4); gX2.fillRect(90, 70, 10, 2);
+                gX2.fillStyle = '#43A047'; gX2.fillRect(22, 62, 2, 2); gX2.fillRect(92, 62, 2, 2);
+                gX2.fillStyle = '#FBC02D'; gX2.fillRect(24, 64, 4, 4); gX2.fillStyle = '#FFF176'; gX2.fillRect(25, 65, 2, 2);
+                gX2.fillStyle = '#FBC02D'; gX2.fillRect(94, 64, 4, 4); gX2.fillStyle = '#FFF176'; gX2.fillRect(95, 65, 2, 2);
+                sprites.gazebo = gC2;
+
+                let wC = document.createElement('canvas'); wC.width = 60; wC.height = 60; let wX = wC.getContext('2d'); wX.imageSmoothingEnabled = false;
+                wX.fillStyle = '#FFFFFF'; wX.fillRect(5, 10, 8, 50); wX.fillRect(45, 10, 8, 50);
+                wX.fillRect(5, 20, 48, 4); wX.fillRect(5, 40, 48, 4);
+                wX.fillStyle = '#E0E0E0'; wX.fillRect(5, 10, 2, 50); wX.fillRect(45, 10, 2, 50);
+                wX.fillRect(5, 24, 48, 1); wX.fillRect(5, 44, 48, 1);
+                wX.fillStyle = '#FFFFFF'; wX.beginPath(); wX.moveTo(5, 10); wX.lineTo(9, 6); wX.lineTo(13, 10); wX.fill();
+                wX.beginPath(); wX.moveTo(45, 10); wX.lineTo(49, 6); wX.lineTo(53, 10); wX.fill();
+                sprites.whitefence = wC;
+            } else if(theme === 'purple') {
+                let pM = document.createElement('canvas'); pM.width = 100; pM.height = 140; let pMx = pM.getContext('2d'); pMx.imageSmoothingEnabled = false;
+                pMx.fillStyle = '#E1BEE7'; pMx.fillRect(40, 50, 20, 90);
+                pMx.fillStyle = '#CE93D8'; pMx.fillRect(40, 50, 6, 90);
+                pMx.fillStyle = '#4A148C'; pMx.beginPath(); pMx.ellipse(50, 50, 45, 30, 0, Math.PI, 0); pMx.fill();
+                pMx.fillStyle = '#6A1B9A'; pMx.beginPath(); pMx.ellipse(50, 45, 40, 25, 0, Math.PI, 0); pMx.fill();
+                pMx.fillStyle = '#8E24AA'; pMx.beginPath(); pMx.ellipse(50, 40, 30, 20, 0, Math.PI, 0); pMx.fill();
+                pMx.fillStyle = '#E1BEE7'; pMx.fillRect(30, 30, 10, 10); pMx.fillRect(50, 20, 8, 8); pMx.fillRect(65, 35, 6, 6);
+                pMx.fillStyle = '#FFFFFF'; pMx.fillRect(32, 32, 4, 4); pMx.fillRect(52, 22, 4, 4); pMx.fillRect(66, 37, 2, 2);
+                sprites.pMushroom = pM;
+
+                let pT = document.createElement('canvas'); pT.width = 150; pT.height = 200; let pTx = pT.getContext('2d'); pTx.imageSmoothingEnabled = false;
+                pTx.fillStyle = '#1A237E'; pTx.fillRect(70, 100, 12, 100); pTx.fillRect(50, 80, 10, 60); pTx.fillRect(90, 60, 10, 70);
+                pTx.fillStyle = '#311B92'; pTx.fillRect(72, 100, 4, 100);
+                for(let i=0; i<15; i++) { let cx = 40 + Math.random()*70; let cy = 20 + Math.random()*80; let r = 10 + Math.random()*12; pTx.fillStyle = '#1A237E'; pTx.beginPath(); pTx.arc(cx, cy, r, 0, Math.PI*2); pTx.fill(); pTx.fillStyle = '#4A148C'; pTx.beginPath(); pTx.arc(cx-1, cy-1, r*0.7, 0, Math.PI*2); pTx.fill(); pTx.fillStyle = '#7B1FA2'; pTx.beginPath(); pTx.arc(cx-2, cy-2, r*0.4, 0, Math.PI*2); pTx.fill(); }
+                sprites.pTree = pT;
+            } else if(theme === 'white') {
+                let wA = document.createElement('canvas'); wA.width = 300; wA.height = 300; let wAx = wA.getContext('2d'); wAx.imageSmoothingEnabled = false;
+                wAx.fillStyle = '#37474F'; wAx.fillRect(40, 100, 60, 200); wAx.fillRect(200, 100, 60, 200);
+                wAx.fillStyle = '#546E7A'; wAx.fillRect(45, 100, 50, 200); wAx.fillRect(205, 100, 50, 200); wAx.fillStyle = '#78909C'; wAx.fillRect(45, 100, 10, 200); wAx.fillRect(205, 100, 10, 200);
+                wAx.fillStyle = '#37474F'; wAx.beginPath(); wAx.arc(150, 100, 110, Math.PI, 0); wAx.fill();
+                wAx.fillStyle = '#546E7A'; wAx.beginPath(); wAx.arc(150, 100, 100, Math.PI, 0); wAx.fill();
+                wAx.fillStyle = '#FFFFFF'; 
+                for(let i=0; i<25; i++) { let vx = 50 + Math.random()*200; let vy = 100 + Math.random()*120; if(vx > 80 && vx < 220) vy = 100 - Math.sqrt(100*100 - (150-vx)*(150-vx)) + Math.random()*20; wAx.fillRect(vx, vy, 4, 4); wAx.fillStyle = '#E1F5FE'; wAx.fillRect(vx+1, vy+1, 2, 2); wAx.fillStyle = '#FFFFFF'; }
+                sprites.wArch = wA;
+
+                let wM = document.createElement('canvas'); wM.width = 40; wM.height = 50; let wMx = wM.getContext('2d'); wMx.imageSmoothingEnabled = false;
+                wMx.fillStyle = '#FFFFFF'; wMx.fillRect(18, 15, 4, 35);
+                wMx.fillStyle = '#B0BEC5'; wMx.beginPath(); wMx.ellipse(20, 15, 18, 12, 0, Math.PI, 0); wMx.fill();
+                wMx.fillStyle = '#FFFFFF'; wMx.beginPath(); wMx.ellipse(18, 13, 14, 10, 0, Math.PI, 0); wMx.fill();
+                wMx.fillStyle = '#E1F5FE'; wMx.fillRect(12, 8, 4, 4); wMx.fillRect(24, 10, 3, 3);
+                sprites.wMushroom = wM;
+            } else {
+                let lC = document.createElement('canvas'); lC.width = 50; lC.height = 200; let lX = lC.getContext('2d'); lX.imageSmoothingEnabled = false;
+                lX.fillStyle = '#212121'; lX.fillRect(18, 180, 14, 20); lX.fillStyle = '#424242'; lX.fillRect(20, 180, 4, 20);
+                lX.fillStyle = '#212121'; lX.fillRect(23, 20, 4, 160); lX.fillStyle = '#424242'; lX.fillRect(23, 20, 1, 160);
+                lX.fillStyle = '#212121'; lX.fillRect(23, 20, 15, 4); lX.fillRect(33, 24, 5, 4);
+                lX.fillStyle = 'rgba(255, 235, 59, 0.9)'; lX.fillRect(30, 10, 14, 24); lX.fillStyle = '#FFF9C4'; lX.fillRect(32, 12, 10, 20);
+                lX.fillStyle = '#212121'; lX.fillRect(28, 8, 18, 4); lX.fillRect(28, 32, 18, 4); lX.fillRect(28, 8, 4, 28); lX.fillRect(42, 8, 4, 28); lX.fillRect(34, 4, 6, 6);
+                sprites.lamp = lC;
+            }
+
+            if(theme === 'yellow') {
+                let dC = document.createElement('canvas'); dC.width = 32; dC.height = 32; let dX = dC.getContext('2d'); dX.imageSmoothingEnabled = false;
+                dX.fillStyle = '#FFFFFF'; dX.fillRect(10, 4, 12, 4); dX.fillRect(8, 8, 16, 4); dX.fillRect(10, 12, 12, 2);
+                dX.fillStyle = '#8D6E63'; dX.fillRect(10, 6, 12, 2); dX.fillRect(8, 10, 16, 2); 
+                dX.fillStyle = '#5D4037'; dX.fillRect(8, 12, 16, 1);
+                dX.fillStyle = '#212121'; dX.fillRect(12, 7, 2, 2); dX.fillRect(16, 7, 2, 2); dX.fillRect(20, 7, 2, 2);
+                dX.fillStyle = '#FFEB3B'; dX.fillRect(10, 14, 12, 8); dX.fillStyle = '#FFF176'; dX.fillRect(10, 14, 12, 2);
+                dX.fillStyle = '#F48FB1'; dX.fillRect(11, 17, 2, 2); dX.fillRect(19, 17, 2, 2);
+                dX.fillStyle = '#000000'; dX.fillRect(13, 16, 2, 2); dX.fillRect(17, 16, 2, 2); dX.fillStyle = '#FFFFFF'; dX.fillRect(14, 16, 1, 1); dX.fillRect(18, 16, 1, 1);
+                dX.fillStyle = '#FF9800'; dX.fillRect(14, 19, 4, 2); dX.fillRect(15, 21, 2, 1);
+                dX.fillStyle = '#FFEB3B'; dX.fillRect(8, 22, 16, 8); dX.fillStyle = '#FFF176'; dX.fillRect(8, 22, 16, 2); dX.fillStyle = '#FBC02D'; dX.fillRect(8, 28, 16, 2);
+                dX.fillStyle = '#FF9800'; dX.fillRect(10, 30, 4, 2); dX.fillRect(18, 30, 4, 2);
+                sprites.duck = dC;
+            }
+            
+            for(let key in allSprites) { sprites[key] = allSprites[key]; }
+        }
+
+        function initGame(theme) {
+            gameStarted = true; currentTheme = theme; worldObjects = []; nextChunkUp = 200; nextChunkDown = -200; flowerIndex = 0; lightningTimer = Math.random() * 300 + 100; lightningAlpha = 0;
+            initSprites(theme);
+            let flowerList = getFlowerList(theme);
+            for(let i=0; i<5; i++) { let f1 = flowerList[flowerIndex % 15]; flowerIndex++; worldObjects.push({ type: 'flower', data: f1, x: -120, y: -200 + i*80, plucked: false, respawn: 0 }); let f2 = flowerList[flowerIndex % 15]; flowerIndex++; worldObjects.push({ type: 'flower', data: f2, x: 120, y: -160 + i*80, plucked: false, respawn: 0 }); }
+            for(let i=0; i<3; i++) { generateChunk(nextChunkUp); nextChunkUp += 200; generateChunk(nextChunkDown); nextChunkDown -= 200; }
+            if(!gameLoopRunning) { gameLoopRunning = true; gameLoop(); }
+        }
+
+        function generateChunk(y) {
+            if(currentTheme === 'green') { worldObjects.push({ type: 'house', x: 180, y: y - 50 }); worldObjects.push({ type: 'fence', x: -100, y: y }); worldObjects.push({ type: 'fence', x: -50, y: y - 60 }); worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); worldObjects.push({ type: 'bush', x: 100, y: y + 50 }); worldObjects.push({ type: 'bush', x: -140, y: y - 30 }); }
+            else if(currentTheme === 'blue') { worldObjects.push({ type: 'arch', x: 0, y: y }); worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); worldObjects.push({ type: 'tree', x: -200, y: y - 150 }); worldObjects.push({ type: 'tree', x: 200, y: y - 50 }); }
+            else if(currentTheme === 'red') { worldObjects.push({ type: 'ruin', x: 180, y: y - 100 }); worldObjects.push({ type: 'ruin', x: -180, y: y - 150 }); worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); worldObjects.push({ type: 'mushroom', x: 150, y: y }); worldObjects.push({ type: 'mushroom', x: -150, y: y + 50 }); }
+            else if(currentTheme === 'orange') { worldObjects.push({ type: 'treehouse', x: 200, y: y - 100 }); worldObjects.push({ type: 'pumpkin', x: -150, y: y }); worldObjects.push({ type: 'pumpkin', x: 150, y: y + 50 }); worldObjects.push({ type: 'lantern_post', x: -100, y: y }); worldObjects.push({ type: 'tree', x: -280, y: y }); worldObjects.push({ type: 'tree', x: 280, y: y - 100 }); }
+            else if(currentTheme === 'yellow') { worldObjects.push({ type: 'gazebo', x: 180, y: y - 20 }); worldObjects.push({ type: 'whitefence', x: -120, y: y }); worldObjects.push({ type: 'whitefence', x: -60, y: y - 60 }); worldObjects.push({ type: 'whitefence', x: 120, y: y + 20 }); worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); }
+            else if(currentTheme === 'purple') { worldObjects.push({ type: 'pMushroom', x: 200, y: y - 50 }); worldObjects.push({ type: 'pMushroom', x: -200, y: y }); worldObjects.push({ type: 'pTree', x: -260, y: y + 50 }); worldObjects.push({ type: 'pTree', x: 260, y: y - 50 }); }
+            else if(currentTheme === 'white') { worldObjects.push({ type: 'wArch', x: 0, y: y }); worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); worldObjects.push({ type: 'wMushroom', x: 150, y: y }); worldObjects.push({ type: 'wMushroom', x: -150, y: y + 50 }); }
+            else { worldObjects.push({ type: 'tree', x: -260, y: y }); worldObjects.push({ type: 'tree', x: 260, y: y - 100 }); worldObjects.push({ type: 'lamp', x: -140, y: y }); }
+
+            let flowerList = getFlowerList(currentTheme);
+            let f1 = flowerList[flowerIndex % 15]; flowerIndex++; worldObjects.push({ type: 'flower', data: f1, x: -120, y: y - 50, plucked: false, respawn: 0 });
+            let f2 = flowerList[flowerIndex % 15]; flowerIndex++; worldObjects.push({ type: 'flower', data: f2, x: 120, y: y - 150, plucked: false, respawn: 0 });
+
+            if(Math.random() > 0.5) { let anType = Math.random() > 0.5 ? 'cat' : 'dog'; let anCol = anType === 'cat' ? (Math.random() > 0.5 ? '#37474F' : '#FFEB3B') : (Math.random() > 0.5 ? '#8D6E63' : '#212121'); worldObjects.push({ type: 'animal', subType: anType, x: (Math.random()*300)-150, y: y, tx: (Math.random()*300)-150, ty: y, speed: 0.5, color: anCol, frame: 0, ft: 0 }); }
+        }
+
+        function drawBackground(camY) {
+            if(currentTheme === 'red') { ctx.fillStyle = '#4E342E'; ctx.fillRect(0, 0, 960, 640); ctx.fillStyle = '#6D4C41'; ctx.fillRect(0, 0, 960, 320); ctx.fillStyle = '#8D6E63'; ctx.fillRect(0, 0, 960, 160); ctx.fillStyle = 'rgba(255, 235, 59, 0.8)'; ctx.beginPath(); ctx.arc(100, 80, 30, Math.PI*0.5, Math.PI*1.5); ctx.fill(); ctx.beginPath(); ctx.arc(850, 120, 20, Math.PI*0.5, Math.PI*1.5); ctx.fill(); if(lightningAlpha > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${lightningAlpha})`; ctx.fillRect(0, 0, 960, 640); } }
+            else if(currentTheme === 'orange') { ctx.fillStyle = '#311B92'; ctx.fillRect(0, 0, 960, 640); ctx.fillStyle = '#4A148C'; ctx.fillRect(0, 100, 960, 540); ctx.fillStyle = '#6A1B9A'; ctx.fillRect(0, 200, 960, 440); ctx.fillStyle = '#E65100'; ctx.fillRect(0, 300, 960, 340); ctx.fillStyle = '#FFEB3B'; ctx.beginPath(); ctx.arc(800, 80, 30, 0, Math.PI*2); ctx.fill(); }
+            else if(currentTheme === 'yellow') {
+                ctx.fillStyle = '#FFF8E1'; ctx.fillRect(0, 0, 960, 640);
+                ctx.fillStyle = '#FFECB3'; ctx.fillRect(0, 100, 960, 540);
+                ctx.fillStyle = '#FFD54F'; ctx.fillRect(0, 200, 960, 440);
+                ctx.fillStyle = '#D4E157'; ctx.fillRect(0, 300, 960, 340);
+                ctx.fillStyle = 'rgba(255, 235, 59, 0.6)'; ctx.beginPath(); ctx.arc(200, 100, 50, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#FFFFFF'; ctx.fillRect(400, 80, 80, 20); ctx.fillRect(420, 70, 40, 30); ctx.fillRect(500, 120, 100, 20); ctx.fillRect(520, 110, 60, 30);
+            }
+            else if(currentTheme === 'purple') {
+                ctx.fillStyle = '#1A237E'; ctx.fillRect(0, 0, 960, 640);
+                ctx.fillStyle = '#311B92'; ctx.fillRect(0, 150, 960, 490);
+                ctx.fillStyle = '#4A148C'; ctx.fillRect(0, 300, 960, 340);
+                ctx.strokeStyle = 'rgba(186, 104, 200, 0.3)'; ctx.lineWidth = 15; ctx.beginPath(); ctx.moveTo(100, 100); ctx.bezierCurveTo(300, 200, 500, 0, 700, 150); ctx.stroke();
+                ctx.strokeStyle = 'rgba(255, 235, 59, 0.2)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(200, 200); ctx.bezierCurveTo(400, 300, 600, 100, 800, 250); ctx.stroke();
+                ctx.fillStyle = '#FFFFFF'; for(let i=0; i<50; i++) { let sx = (i*193+100)%960; let sy = (i*71+50)%300; ctx.fillRect(sx, sy, 2, 2); } for(let i=0; i<10; i++) { let sx = (i*113+200)%960; let sy = (i*61+100)%300; ctx.fillRect(sx, sy, 3, 3); }
+                ctx.fillStyle = 'rgba(225, 190, 231, 0.8)'; ctx.beginPath(); ctx.arc(150, 80, 30, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(255, 235, 59, 0.6)'; ctx.beginPath(); ctx.arc(800, 120, 20, 0, Math.PI*2); ctx.fill();
+            }
+            else if(currentTheme === 'white') {
+                ctx.fillStyle = '#1A237E'; ctx.fillRect(0, 0, 960, 640);
+                ctx.fillStyle = '#283593'; ctx.fillRect(0, 150, 960, 490);
+                ctx.fillStyle = '#3949AB'; ctx.fillRect(0, 300, 960, 340);
+                ctx.strokeStyle = 'rgba(225, 245, 254, 0.2)'; ctx.lineWidth = 30; ctx.beginPath(); ctx.moveTo(100, 100); ctx.bezierCurveTo(300, 200, 500, 0, 700, 150); ctx.stroke();
+                ctx.fillStyle = '#FFFFFF'; for(let i=0; i<80; i++) { let sx = (i*193+100)%960; let sy = (i*71+50)%300; ctx.fillRect(sx, sy, 2, 2); }
+                ctx.fillStyle = 'rgba(225, 245, 254, 0.9)'; ctx.beginPath(); ctx.arc(800, 100, 30, 0, Math.PI*2); ctx.fill();
+            }
+
+            let offsetY = camY % 200;
+            for(let x=-200; x<1160; x+=200) { for(let y=-200-offsetY; y<840; y+=200) { if(currentTheme === 'red' || currentTheme === 'orange') { if(y > 300) ctx.drawImage(sprites.grass, x, y); } else if(currentTheme === 'yellow' || currentTheme === 'purple' || currentTheme === 'white') { if(y > 280) ctx.drawImage(sprites.grass, x, y); } else { ctx.drawImage(sprites.grass, x, y); } } }
+
+            // 3D Cobblestone Path
+            if (currentTheme !== 'pink') {
+                ctx.fillStyle = '#37474F'; ctx.fillRect(360, 300, 240, 340);
+                for(let i=0; i<25; i++) {
+                    let yPos = (i * 40 + camY * 1.1) % 640;
+                    if (yPos < 300) continue;
+                    for(let j=0; j<3; j++) {
+                        let xPos = 370 + j*80;
+                        ctx.fillStyle = '#37474F'; ctx.fillRect(xPos+2, yPos+2, 70, 35); // Shadow
+                        ctx.fillStyle = '#546E7A'; ctx.fillRect(xPos, yPos, 70, 35); // Base
+                        ctx.fillStyle = '#78909C'; ctx.fillRect(xPos, yPos, 70, 8);  // Top Highlight
+                        ctx.fillStyle = '#90A4AE'; ctx.fillRect(xPos+2, yPos+2, 20, 4); // Shine
+                    }
+                }
+            } else {
+                 ctx.fillStyle = '#5D4037'; ctx.fillRect(360, 0, 240, 640);
+                 for(let i=0; i<30; i++) {
+                    let yPos = (i * 40 + camY) % 640; if(yPos < 0) yPos += 640;
+                    for(let j=0; j<3; j++) {
+                        let xPos = 370 + j*80;
+                        ctx.fillStyle = '#37474F'; ctx.fillRect(xPos+2, yPos+2, 60, 30);
+                        ctx.fillStyle = '#90A4AE'; ctx.fillRect(xPos, yPos, 60, 30);
+                        ctx.fillStyle = '#CFD8DC'; ctx.fillRect(xPos, yPos, 60, 10);
+                        ctx.fillStyle = '#ECEFF1'; ctx.fillRect(xPos+2, yPos+2, 20, 5);
+                    }
+                }
+            }
+        }
+
+        function drawTree(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -200 || y > 840) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+20, 55, 18, 0, 0, Math.PI*2); ctx.fill(); px(x-8, y, '#3E2723', 16, 40); px(x-8, y, '#5D4037', 6, 40); px(x+2, y, '#795548', 6, 40); let bounce = Math.sin(time*2 + obj.x) * 2; ctx.drawImage(sprites.tree, x - 75, y - 120 + bounce); }
+        function drawPTree(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -200 || y > 840) return; ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(x, y+20, 60, 20, 0, 0, Math.PI*2); ctx.fill(); let bounce = Math.sin(time*2 + obj.x) * 2; ctx.drawImage(sprites.pTree, x - 75, y - 150 + bounce); }
+        function drawHouse(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -150 || y > 740) return; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, y+60, 70, 20, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.house, x - 60, y - 60); }
+        function drawArch(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -200 || y > 840) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+100, 120, 30, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.arch, x - 150, y - 150); }
+        function drawWArch(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -200 || y > 840) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+100, 120, 30, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.wArch, x - 150, y - 150); }
+        function drawRuin(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -200 || y > 840) return; ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(x, y+100, 120, 30, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.ruin, x - 120, y - 140); }
+        function drawTreehouse(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -300 || y > 940) return; ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(x, y+150, 150, 40, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.treehouse, x - 150, y - 200); }
+        function drawPumpkin(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+15, 20, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.pumpkin, x - 20, y - 15); }
+        function drawLanternPost(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.drawImage(sprites.lantern_post, x - 10, y - 60); const grd = ctx.createRadialGradient(x, y-40, 5, x, y-40, 100); grd.addColorStop(0, 'rgba(255, 193, 7, 0.6)'); grd.addColorStop(1, 'rgba(255, 193, 7, 0)'); ctx.fillStyle = grd; ctx.fillRect(x-100, y-140, 200, 200); }
+        function drawMushroom(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+10, 15, 5, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.mushroom, x - 15, y - 15); const grd = ctx.createRadialGradient(x, y, 5, x, y, 40); grd.addColorStop(0, 'rgba(239, 83, 80, 0.4)'); grd.addColorStop(1, 'rgba(239, 83, 80, 0)'); ctx.fillStyle = grd; ctx.fillRect(x-40, y-40, 80, 80); }
+        function drawWMushroom(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+10, 15, 5, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.wMushroom, x - 15, y - 15); const grd = ctx.createRadialGradient(x, y, 5, x, y, 50); grd.addColorStop(0, 'rgba(255, 255, 255, 0.6)'); grd.addColorStop(1, 'rgba(255, 255, 255, 0)'); ctx.fillStyle = grd; ctx.fillRect(x-50, y-50, 100, 100); }
+        function drawPMushroom(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(x, y+20, 40, 12, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.pMushroom, x - 50, y - 70); const grd = ctx.createRadialGradient(x, y-30, 5, x, y-30, 90); grd.addColorStop(0, 'rgba(186, 104, 200, 0.5)'); grd.addColorStop(1, 'rgba(186, 104, 200, 0)'); ctx.fillStyle = grd; ctx.fillRect(x-90, y-120, 180, 180); }
+        function drawFence(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(x, y+30, 30, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.fence, x - 30, y); }
+        function drawWhiteFence(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(x, y+30, 30, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.whitefence, x - 30, y); }
+        function drawGazebo(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -100 || y > 740) return; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, y+80, 60, 15, 0, 0, Math.PI*2); ctx.fill(); ctx.drawImage(sprites.gazebo, x - 60, y - 60); }
+        function drawLamp(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -100 || y > 740) return; ctx.drawImage(sprites.lamp, x - 25, y - 100); const grd = ctx.createRadialGradient(x, y+20, 5, x, y+20, 150); grd.addColorStop(0, 'rgba(255, 235, 59, 0.3)'); grd.addColorStop(1, 'rgba(255, 235, 59, 0)'); ctx.fillStyle = grd; ctx.fillRect(x-150, y-130, 300, 300); }
+        function drawBush(obj, camY) { let x = obj.x + 480; let y = obj.y - camY; if(y < -50 || y > 690) return; let bounce = Math.sin(time*3 + obj.y) * 1; ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, y+5, 20, 8, 0, 0, Math.PI*2); ctx.fill(); px(x-12, y-8+bounce, '#1B5E20', 24, 10); px(x-10, y-10+bounce, '#2E7D32', 20, 12); px(x-8, y-12+bounce, '#43A047', 16, 14); px(x-4, y-14+bounce, '#66BB6A', 8, 4); }
+        function drawFlower(obj, camY) { 
+            if(obj.plucked) return; 
+            let x = obj.x + 480; let y = obj.y - camY; 
+            if(y < -100 || y > 740) return; 
+            let bounce = Math.sin(time*3 + obj.y) * 1; 
+            
+            let glow = 0.4 + Math.sin(time * 5) * 0.2;
+            ctx.save();
+            ctx.globalAlpha = glow;
+            let glowGrd = ctx.createRadialGradient(x, y, 2, x, y, 30);
+            glowGrd.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            glowGrd.addColorStop(0.4, 'rgba(255, 255, 255, 0.4)');
+            glowGrd.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = glowGrd;
+            ctx.beginPath();
+            ctx.arc(x, y, 30, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.drawImage(sprites[obj.data.name], x - 24, y - 24 + bounce, 48, 48); 
+        }
+
+        function drawPlayer(camY) {
+            const x = player.x + 480; const y = player.y - camY; const bounce = Math.sin(time*8) * 1;
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+6, 12, 5, 0, 0, Math.PI*2); ctx.fill();
+            if(player.moving) { if(player.frame === 0) { px(x-4, y, '#37474F', 3, 5); px(x+1, y, '#263238', 3, 5); px(x-4, y+5, '#212121', 3, 1); px(x+1, y+5, '#000000', 3, 1); } else { px(x-4, y+1, '#37474F', 3, 5); px(x+1, y-1, '#263238', 3, 5); px(x-4, y+6, '#212121', 3, 1); px(x+1, y+4, '#000000', 3, 1); } } else { px(x-4, y, '#37474F', 3, 5); px(x+1, y, '#263238', 3, 5); px(x-4, y+5, '#212121', 3, 1); px(x+1, y+5, '#000000', 3, 1); }
+            px(x-6, y-6+bounce, '#AD1457', 12, 6); px(x-5, y-6+bounce, '#EC407A', 10, 5); px(x-4, y-6+bounce, '#F8BBD0', 2, 2); px(x-7, y-5+bounce, '#EC407A', 1, 5); px(x+6, y-5+bounce, '#EC407A', 1, 5); px(x-7, y+bounce, '#FFCC80', 1, 1); px(x+6, y+bounce, '#FFCC80', 1, 1);
+            px(x-5, y-14+bounce, '#E0B080', 10, 8); px(x-5, y-14+bounce, '#FFCC80', 8, 8); px(x-4, y-14+bounce, '#FFE0B2', 2, 2); px(x-6, y-16+bounce, '#3E2723', 12, 6); px(x-6, y-10+bounce, '#3E2723', 1, 2); px(x+5, y-10+bounce, '#3E2723', 1, 2); px(x-5, y-16+bounce, '#5D4037', 10, 2);
+            if(player.dir === 'down' || player.dir === 'left' || player.dir === 'right') { let eyeOffset = player.dir === 'left' ? -1 : (player.dir === 'right' ? 1 : 0); px(x-3+eyeOffset, y-11+bounce, '#000', 2, 3); px(x+2+eyeOffset, y-11+bounce, '#000', 2, 3); px(x-3+eyeOffset, y-11+bounce, '#FFF', 1, 1); px(x+2+eyeOffset, y-11+bounce, '#FFF', 1, 1); px(x-1, y-8+bounce, '#EF9A9A', 2, 1); } else if(player.dir === 'up') { px(x-5, y-16+bounce, '#3E2723', 10, 2); }
+        }
+
+        function drawCreature(c, camY) {
+            const x = c.x + 480; const y = c.y - camY; if(y < -50 || y > 690) return; const bounce = Math.sin(time*6 + c.x) * 1;
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y+5, 10, 4, 0, 0, Math.PI*2); ctx.fill();
+            if(c.subType === 'cat') { px(x-6, y-3+bounce, c.color, 12, 5); px(x-6, y+1+bounce, c.color, 12, 1); px(x-6, y-3+bounce, '#000', 12, 1); if(c.frame === 0) { px(x-5, y+2, c.color, 2, 3); px(x+3, y+2, c.color, 2, 3); } else { px(x-5, y+3, c.color, 2, 3); px(x+3, y+3, c.color, 2, 3); } px(x+5, y-9+bounce, c.color, 6, 6); px(x+5, y-10+bounce, c.color, 1, 1); px(x+10, y-10+bounce, c.color, 1, 1); px(x+5, y-9+bounce, '#000', 6, 1); px(x-7, y-2+bounce, c.color, 3, 1); px(x+7, y-6+bounce, '#000', 2, 2); px(x+7, y-6+bounce, '#FFF', 1, 1); px(x+5, y-5+bounce, '#37474F', 1, 1); }
+            else if(c.subType === 'dog') { px(x-7, y-3+bounce, c.color, 14, 6); px(x-7, y+2+bounce, c.color, 14, 1); px(x-7, y-3+bounce, '#000', 14, 1); if(c.frame === 0) { px(x-6, y+3, c.color, 2, 3); px(x+4, y+3, c.color, 2, 3); } else { px(x-6, y+4, c.color, 2, 3); px(x+4, y+4, c.color, 2, 3); } px(x+6, y-9+bounce, c.color, 7, 7); px(x+6, y-10+bounce, c.color, 2, 1); px(x+11, y-10+bounce, c.color, 2, 1); px(x+6, y-9+bounce, '#000', 7, 1); px(x-8, y+bounce, c.color, 3, 2); px(x+9, y-6+bounce, '#000', 2, 2); px(x+9, y-6+bounce, '#FFF', 1, 1); px(x+8, y-4+bounce, '#37474F', 2, 1); }
+        }
+
+        function drawDuck(d) { 
+            if (!sprites.duck) return; 
+            let bob = Math.sin(time*4 + d.bob) * 5; 
+            let x = d.x; 
+            let y = d.y + bob; 
+            ctx.drawImage(sprites.duck, x - 16, y - 16, 32, 32); 
+        }
+
+        function update() {
+            time += 0.05; player.moving = false;
+            if(keys['w'] || keys['arrowup']) { player.y -= player.speed; player.dir = 'up'; player.moving = true; } if(keys['s'] || keys['arrowdown']) { player.y += player.speed; player.dir = 'down'; player.moving = true; } if(keys['a'] || keys['arrowleft']) { player.x -= player.speed; player.dir = 'left'; player.moving = true; } if(keys['d'] || keys['arrowright']) { player.x += player.speed; player.dir = 'right'; player.moving = true; }
+            player.x = Math.max(-100, Math.min(100, player.x)); if(player.moving) { player.frameTimer++; if(player.frameTimer > 10) { player.frameTimer = 0; player.frame = 1 - player.frame; } } camY = player.y - 320;
+            if(player.y > nextChunkUp - 600) { generateChunk(nextChunkUp); nextChunkUp += 200; } if(player.y < nextChunkDown + 600) { generateChunk(nextChunkDown); nextChunkDown -= 200; }
+            worldObjects = worldObjects.filter(obj => Math.abs(obj.y - player.y) < 2000);
+            
+            if(currentTheme === 'pink') pinkPetals.forEach(p => { p.y += p.vy; p.x += p.vx; p.rot += 0.05; if(p.y > 640) p.y = -10; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; });
+            else if(currentTheme === 'green') greenLeaves.forEach(p => { p.y += p.vy; p.x += p.vx; p.rot += 0.05; if(p.y > 640) p.y = -10; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; });
+            else if(currentTheme === 'blue') blueDust.forEach(p => { p.y -= p.vy; p.x += p.vx; if(p.y < -10) p.y = 650; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; });
+            else if(currentTheme === 'red') { redPetals.forEach(p => { p.y += p.vy; p.x += p.vx; p.rot += 0.05; if(p.y > 640) p.y = -10; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); lightningTimer--; if(lightningTimer <= 0) { lightningAlpha = 0.7; lightningTimer = Math.random() * 500 + 200; } if(lightningAlpha > 0) lightningAlpha -= 0.05; }
+            else if(currentTheme === 'orange') { orangeLeaves.forEach(p => { p.y += p.vy; p.x += p.vx; p.rot += 0.05; if(p.y > 640) p.y = -10; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); orangeDust.forEach(p => { p.y -= p.vy; p.x += p.vx; if(p.y < -10) p.y = 650; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); }
+            else if(currentTheme === 'yellow') { yellowPetals.forEach(p => { p.y += p.vy; p.x += p.vx; p.rot += 0.05; if(p.y > 640) p.y = -10; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); floatingDucks.forEach(d => { d.x += d.vx; if(d.x > 1000) d.x = -40; }); }
+            else if(currentTheme === 'purple') { purpleDust.forEach(p => { p.y -= p.vy; p.x += p.vx; if(p.y < -10) p.y = 650; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); }
+            else if(currentTheme === 'white') { whiteDust.forEach(p => { p.y -= p.vy; p.x += p.vx; if(p.y < -10) p.y = 650; if(p.x > 960) p.x = 0; if(p.x < 0) p.x = 960; }); }
+            
+            worldObjects.forEach(c => { if(c.type === 'animal') { if(Math.abs(c.x - c.tx) < 5 && Math.abs(c.y - c.ty) < 5) { c.tx = (Math.random()*300)-150; c.ty = c.y + (Math.random()*200)-100; c.speed = 0.3 + Math.random()*0.4; } if(c.x < c.tx) c.x += c.speed; if(c.x > c.tx) c.x -= c.speed; if(c.y < c.ty) c.y += c.speed; if(c.y > c.ty) c.y -= c.speed; c.ft++; if(c.ft > 15) { c.ft = 0; c.frame = 1 - c.frame; } } if(c.type === 'flower' && c.plucked && Date.now() > c.respawn) c.plucked = false; });
+        }
+
+        function render() {
+            drawBackground(camY);
+            if(currentTheme === 'pink') pinkPetals.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); px(0, 0, '#F8BBD0', p.size, p.size); px(1, 1, '#F48FB1', p.size-1, p.size-1); ctx.restore(); });
+            else if(currentTheme === 'green') greenLeaves.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); px(0, 0, '#66BB6A', p.size, p.size); px(1, 1, '#43A047', p.size-1, p.size-1); ctx.restore(); });
+            else if(currentTheme === 'blue') blueDust.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; px(p.x, p.y, '#90CAF9', p.size, p.size); px(p.x+1, p.y+1, '#FFFFFF', p.size-1, p.size-1); ctx.restore(); });
+            else if(currentTheme === 'red') redPetals.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); px(0, 0, '#EF5350', p.size, p.size); px(1, 1, '#C62828', p.size-1, p.size-1); ctx.restore(); });
+            else if(currentTheme === 'orange') { orangeLeaves.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); px(0, 0, p.color, p.size, p.size); px(1, 1, p.color, p.size-1, p.size-1); ctx.restore(); }); orangeDust.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; px(p.x, p.y, '#FFCC80', p.size, p.size); px(p.x+1, p.y+1, '#FFFFFF', p.size-1, p.size-1); ctx.restore(); }); }
+            else if(currentTheme === 'yellow') { yellowPetals.forEach(p => { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); px(0, 0, '#FFF176', p.size, p.size); px(1, 1, '#FDD835', p.size-1, p.size-1); ctx.restore(); }); floatingDucks.forEach(d => drawDuck(d)); }
+            else if(currentTheme === 'purple') { purpleDust.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; px(p.x, p.y, p.color, p.size, p.size); px(p.x+1, p.y+1, '#FFFFFF', p.size-1, p.size-1); ctx.restore(); }); }
+            else if(currentTheme === 'white') { whiteDust.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; px(p.x, p.y, '#FFFFFF', p.size, p.size); px(p.x+1, p.y+1, '#E1F5FE', p.size-1, p.size-1); ctx.restore(); }); }
+            
+            let bgTypes = ['tree', 'house', 'arch', 'ruin', 'treehouse', 'gazebo', 'pTree', 'pMushroom', 'wArch', 'wMushroom'];
+            worldObjects.filter(o => bgTypes.includes(o.type)).forEach(o => { if(o.type === 'tree') drawTree(o, camY); else if(o.type === 'house') drawHouse(o, camY); else if(o.type === 'arch') drawArch(o, camY); else if(o.type === 'wArch') drawWArch(o, camY); else if(o.type === 'ruin') drawRuin(o, camY); else if(o.type === 'treehouse') drawTreehouse(o, camY); else if(o.type === 'gazebo') drawGazebo(o, camY); else if(o.type === 'pTree') drawPTree(o, camY); else if(o.type === 'pMushroom') drawPMushroom(o, camY); else if(o.type === 'wMushroom') drawWMushroom(o, camY); });
+            
+            const drawables = worldObjects.filter(o => !bgTypes.includes(o.type));
+            drawables.push(player); drawables.sort((a,b) => a.y - b.y);
+            drawables.forEach(d => { if(d === player) drawPlayer(camY); else if(d.type === 'animal') drawCreature(d, camY); else if(d.type === 'flower') drawFlower(d, camY); else if(d.type === 'lamp') drawLamp(d, camY); else if(d.type === 'fence') drawFence(d, camY); else if(d.type === 'whitefence') drawWhiteFence(d, camY); else if(d.type === 'bush') drawBush(d, camY); else if(d.type === 'mushroom') drawMushroom(d, camY); else if(d.type === 'pumpkin') drawPumpkin(d, camY); else if(d.type === 'lantern_post') drawLanternPost(d, camY); });
+            
+            hoveredFlower = null; worldObjects.forEach(f => { if(f.type === 'flower' && !f.plucked) { let distX = Math.abs(worldMouseX - f.x); let distY = Math.abs(worldMouseY - f.y); if(distX < 30 && distY < 40) hoveredFlower = f; } });
+            if(hoveredFlower) { tipName.innerText = hoveredFlower.data.name; tipMeaning.innerText = hoveredFlower.data.meaning; tooltip.style.display = 'block'; const rect = canvas.getBoundingClientRect(); let tipX = rect.left + (hoveredFlower.x + 480) + 30; let tipY = rect.top + (hoveredFlower.y - camY) - 80; if(tipX + 200 > window.innerWidth) tipX = rect.left + (hoveredFlower.x + 480) - 220; if(tipY < 0) tipY = rect.top + (hoveredFlower.y - camY) + 20; tooltip.style.left = tipX + 'px'; tooltip.style.top = tipY + 'px'; canvas.style.cursor = 'pointer'; } else { tooltip.style.display = 'none'; canvas.style.cursor = 'default'; }
+            
+            const vGrd = ctx.createRadialGradient(480, 320, 200, 480, 320, 600); vGrd.addColorStop(0, 'rgba(0,0,0,0)');
+            if(currentTheme === 'green') vGrd.addColorStop(1, 'rgba(46, 125, 50, 0.2)'); else if(currentTheme === 'blue') vGrd.addColorStop(1, 'rgba(13, 71, 161, 0.4)'); else if(currentTheme === 'red') vGrd.addColorStop(1, 'rgba(62, 39, 35, 0.6)'); else if(currentTheme === 'orange') vGrd.addColorStop(1, 'rgba(49, 27, 146, 0.6)'); else if(currentTheme === 'yellow') vGrd.addColorStop(1, 'rgba(245, 127, 23, 0.2)'); else if(currentTheme === 'purple') vGrd.addColorStop(1, 'rgba(26, 35, 126, 0.6)'); else if(currentTheme === 'white') vGrd.addColorStop(1, 'rgba(26, 35, 126, 0.5)'); else vGrd.addColorStop(1, 'rgba(233, 30, 99, 0.15)');
+            ctx.fillStyle = vGrd; ctx.fillRect(0, 0, 960, 640);
+        }
+
+        function gameLoop() { if(!gameStarted) return; update(); render(); requestAnimationFrame(gameLoop); }
+
+        // --- 6. BOUQUET STUDIO LOGIC (Patterns & Moving Backgrounds) ---
+        const studioCanvas = document.getElementById('studioCanvas');
+        const sctx = studioCanvas.getContext('2d');
+        let studioState = {
+            style: 'classic', wrap: 'white', ribbon: 'satin', ribbonColor: '#EC407A',
+            vase: 'handheld', bg: 'cream', message: '', decorations: [], stickers: []
+        };
+        let draggingSticker = null;
+        let studioAnimating = false;
+        let studioAnimId = null;
+        let studioTime = 0;
+        let studioParticles = [];
+
+        function initStudioParticles() {
+            studioParticles = [];
+            for(let i=0; i<30; i++) {
+                studioParticles.push({
+                    x: Math.random() * 600,
+                    y: Math.random() * 800,
+                    speed: Math.random() * 1 + 0.5,
+                    size: Math.random() * 6 + 4,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.05,
+                    alpha: Math.random() * 0.5 + 0.3,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function startStudioAnim() {
+            if (studioAnimating) return;
+            studioAnimating = true;
+            initStudioParticles();
+            function loop() {
+                if (!studioAnimating) return;
+                studioTime += 0.05;
+                drawStudio();
+                studioAnimId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function stopStudioAnim() {
+            studioAnimating = false;
+            if (studioAnimId) cancelAnimationFrame(studioAnimId);
+        }
+
+        function calculateBouquetPositions(style, count, cx, cy) {
+            let positions = [];
+            let cyBloom = cy - 40;
+            if (count === 0) return positions;
+            if (count === 1) return [{x: cx, y: cyBloom}];
+
+            if (style === 'wild') {
+                for(let i=0; i<count; i++) {
+                    let r = 30 + Math.random()*70;
+                    let a = Math.random() * Math.PI * 2;
+                    positions.push({x: cx + Math.cos(a)*r, y: cyBloom + Math.sin(a)*r*0.7});
+                }
+            } else {
+                let scale = (style === 'luxury') ? 16 : 20;
+                for(let i=0; i<count; i++) {
+                    let a = i * 137.5 * (Math.PI / 180);
+                    let r = scale * Math.sqrt(i);
+                    positions.push({x: cx + Math.cos(a)*r, y: cyBloom + Math.sin(a)*r*0.7});
+                }
+            }
+            return positions;
+        }
+
+        function drawVasePart(part) {
+            let cx = 300, cy = 450;
+            let openingY = cy - 10; 
+            
+            if (part === 'back') {
+                if(studioState.vase === 'glass') {
+                    sctx.fillStyle = 'rgba(200, 230, 255, 0.3)';
+                    sctx.beginPath(); sctx.moveTo(cx-60, openingY); sctx.quadraticCurveTo(cx-80, cy+150, cx-50, cy+180); sctx.lineTo(cx+50, cy+180); sctx.quadraticCurveTo(cx+80, cy+150, cx+60, openingY); sctx.fill();
+                } else if(studioState.vase === 'ceramic') {
+                    sctx.fillStyle = '#D0D0D0';
+                    sctx.beginPath(); sctx.moveTo(cx-60, openingY); sctx.quadraticCurveTo(cx-80, cy+150, cx-50, cy+180); sctx.lineTo(cx+50, cy+180); sctx.quadraticCurveTo(cx+80, cy+150, cx+60, openingY); sctx.fill();
+                } else if(studioState.vase === 'basket') {
+                    sctx.fillStyle = '#8D6E63';
+                    sctx.beginPath(); sctx.moveTo(cx-70, openingY); sctx.lineTo(cx-50, cy+180); sctx.lineTo(cx+50, cy+180); sctx.lineTo(cx+70, openingY); sctx.fill();
+                }
+            } else if (part === 'front') {
+                if(studioState.vase === 'glass') {
+                    sctx.strokeStyle = 'rgba(255,255,255,0.9)'; sctx.lineWidth = 4;
+                    sctx.beginPath(); sctx.moveTo(cx-60, openingY); sctx.quadraticCurveTo(cx-80, cy+150, cx-50, cy+180); sctx.lineTo(cx+50, cy+180); sctx.quadraticCurveTo(cx+80, cy+150, cx+60, openingY); sctx.stroke();
+                    sctx.fillStyle = 'rgba(255,255,255,0.2)'
+                    sctx.fillRect(cx-40, cy+50, 10, 100); 
+                } else if(studioState.vase === 'ceramic') {
+                    sctx.fillStyle = '#E0E0E0'; sctx.fillRect(cx-60, openingY, 120, 10); 
+                    sctx.fillStyle = '#BDBDBD'; sctx.fillRect(cx-60, openingY+8, 120, 4); 
+                } else if(studioState.vase === 'basket') {
+                    sctx.strokeStyle = '#5D4037'; sctx.lineWidth = 2;
+                    for(let i=0; i<10; i++) { sctx.beginPath(); sctx.moveTo(cx-70+i*14, openingY); sctx.lineTo(cx-50+i*10, cy+180); sctx.stroke(); }
+                    sctx.fillStyle = '#8D6E63'; sctx.fillRect(cx-70, openingY-5, 140, 10); 
+                }
+            }
+        }
+
+        function drawStudio() {
+            let bg = studioState.bg;
+            
+            // 1. Draw Backgrounds
+            if (bg === 'cream') { sctx.fillStyle = '#FDFCF8'; sctx.fillRect(0, 0, 600, 800); }
+            else if (bg === 'polka_pink') {
+                sctx.fillStyle = '#FFF0F5'; sctx.fillRect(0, 0, 600, 800);
+                sctx.fillStyle = 'rgba(255, 182, 193, 0.5)';
+                for(let x = 20; x < 600; x += 40) { for(let y = 20; y < 800; y += 40) { sctx.beginPath(); sctx.arc(x, y, 8, 0, Math.PI * 2); sctx.fill(); } }
+            } else if (bg === 'stripes_sage') {
+                for(let x = 0; x < 600; x += 20) { sctx.fillStyle = (x / 20) % 2 === 0 ? '#E8F5E9' : '#C8E6C9'; sctx.fillRect(x, 0, 20, 800); }
+            } else if (bg === 'botanical') {
+                sctx.fillStyle = '#FDFCF8'; sctx.fillRect(0, 0, 600, 800);
+                sctx.strokeStyle = '#A5D6A7'; sctx.lineWidth = 4;
+                // Vines
+                sctx.beginPath(); sctx.moveTo(0, 800); sctx.quadraticCurveTo(40, 600, 20, 400); sctx.stroke();
+                sctx.beginPath(); sctx.moveTo(600, 800); sctx.quadraticCurveTo(560, 600, 580, 400); sctx.stroke();
+                // Leaves
+                for(let i=0; i<5; i++) {
+                    let y = 200 + i * 120;
+                    sctx.fillStyle = '#81C784';
+                    sctx.beginPath(); sctx.ellipse(20, y, 10, 20, Math.PI/4, 0, Math.PI*2); sctx.fill();
+                    sctx.beginPath(); sctx.ellipse(580, y + 60, 10, 20, -Math.PI/4, 0, Math.PI*2); sctx.fill();
+                }
+            } else if (bg === 'moving_petals') {
+                sctx.fillStyle = '#FFF0F5'; sctx.fillRect(0, 0, 600, 800);
+                // Draw Moving Petals
+                studioParticles.forEach(p => {
+                    p.y -= p.speed;
+                    p.rotation += p.rotSpeed;
+                    p.alpha = 0.4 + Math.sin(studioTime * 2 + p.phase) * 0.4;
+                    if (p.y < -20) p.y = 820;
+                    
+                    sctx.save();
+                    sctx.translate(p.x, p.y);
+                    sctx.rotate(p.rotation);
+                    sctx.globalAlpha = p.alpha;
+                    sctx.fillStyle = '#FFB6C1';
+                    sctx.fillRect(0, 0, p.size, p.size);
+                    sctx.fillStyle = '#FFC0CB';
+                    sctx.fillRect(1, 1, p.size-2, p.size-2);
+                    sctx.restore();
+                });
+                sctx.globalAlpha = 1;
+            } else if (bg === 'moving_stars') {
+                sctx.fillStyle = '#1A237E'; sctx.fillRect(0, 0, 600, 800);
+                // Draw Moving Stars
+                studioParticles.forEach(p => {
+                    p.y -= p.speed * 0.5;
+                    p.alpha = 0.3 + Math.abs(Math.sin(studioTime * 1.5 + p.phase)) * 0.7;
+                    if (p.y < -20) p.y = 820;
+                    
+                    sctx.save();
+                    sctx.globalAlpha = p.alpha;
+                    sctx.fillStyle = '#FFEB3B';
+                    sctx.beginPath();
+                    // Simple pixel star shape
+                    sctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+                    sctx.fillRect(p.x - p.size/4, p.y - p.size*0.75, p.size/2, p.size*1.5);
+                    sctx.fillRect(p.x - p.size*0.75, p.y - p.size/4, p.size*1.5, p.size/2);
+                    sctx.restore();
+                });
+                sctx.globalAlpha = 1;
+            }
+
+            let cx = 300, cy = 450;
+            let openingY = (studioState.vase !== 'handheld') ? cy - 10 : cy + 40; 
+
+            // 2. Draw Vase Back
+            if (studioState.vase !== 'handheld') drawVasePart('back');
+
+            // 3. Wrapping Paper (Smooth Cone/Horn Shape)
+            if(studioState.wrap !== 'none') {
+                let wrapColor = '#FFFFFF';
+                if(studioState.wrap === 'kraft') wrapColor = '#D7CCC8';
+                else if(studioState.wrap === 'beige') wrapColor = '#F5F5DC';
+                else if(studioState.wrap === 'pink') wrapColor = '#FCE4EC';
+                else if(studioState.wrap === 'sage') wrapColor = '#C8E6C9';
+                else if(studioState.wrap === 'black') wrapColor = '#212121';
+                
+                let wrapY = cy + 20; 
+                let wrapBaseY = cy + 190;
+                
+                sctx.fillStyle = wrapColor;
+                sctx.beginPath();
+                sctx.moveTo(cx - 30, wrapY); 
+                sctx.quadraticCurveTo(cx - 130, wrapY + 60, cx - 80, wrapBaseY); 
+                sctx.quadraticCurveTo(cx, wrapBaseY + 20, cx + 80, wrapBaseY);
+                sctx.quadraticCurveTo(cx + 130, wrapY + 60, cx + 30, wrapY); 
+                sctx.closePath();
+                sctx.fill();
+                
+                // Simple shadow for depth
+                sctx.fillStyle = 'rgba(0,0,0,0.1)';
+                sctx.beginPath();
+                sctx.moveTo(cx, wrapBaseY + 20); 
+                sctx.quadraticCurveTo(cx + 40, wrapBaseY, cx + 80, wrapBaseY);
+                sctx.quadraticCurveTo(cx + 130, wrapY + 60, cx + 30, wrapY);
+                sctx.quadraticCurveTo(cx + 20, wrapY + 20, cx + 15, wrapBaseY + 10);
+                sctx.closePath();
+                sctx.fill();
+            }
+
+            // 4. Calculate Positions
+            let positions = calculateBouquetPositions(studioState.style, basket.length, cx, cy);
+            let cyBloom = cy - 40;
+
+            // 5. Draw Organic Stems
+            sctx.lineCap = 'round';
+            positions.forEach((p, i) => {
+                sctx.strokeStyle = i % 2 === 0 ? '#2E7D32' : '#1B5E20';
+                sctx.lineWidth = 3 + Math.random() * 2;
+                sctx.beginPath();
+                sctx.moveTo(p.x, p.y + 15); 
+                let midX = p.x + (cx - p.x) * 0.4;
+                let midY = p.y + (openingY - p.y) * 0.6;
+                sctx.quadraticCurveTo(midX, midY, cx + (Math.random()*10-5), openingY);
+                sctx.stroke();
+                
+                // Leaf
+                if (i % 3 === 0) {
+                    sctx.fillStyle = '#43A047';
+                    sctx.save();
+                    sctx.translate(midX, midY);
+                    sctx.rotate(Math.atan2(openingY - p.y, cx - p.x) - Math.PI/2);
+                    sctx.beginPath();
+                    sctx.ellipse(0, 0, 4, 8, 0, 0, Math.PI*2);
+                    sctx.fill();
+                    sctx.restore();
+                }
+            });
+
+            // 6. Draw Vase Front
+            if (studioState.vase !== 'handheld') drawVasePart('front');
+
+            // 7. Sort by Y and Draw 3D Flowers
+            let basketWithPos = basket.map((f, i) => ({flower: f, pos: positions[i]}));
+            basketWithPos.sort((a,b) => a.pos.y - b.pos.y);
+            
+            sctx.imageSmoothingEnabled = false;
+            basketWithPos.forEach(item => {
+                let sprite = allSprites[item.flower.name];
+                if (sprite) {
+                    sctx.fillStyle = 'rgba(0,0,0,0.1)';
+                    sctx.beginPath(); sctx.ellipse(item.pos.x, item.pos.y + 30, 25, 8, 0, 0, Math.PI*2); sctx.fill();
+                    sctx.drawImage(sprite, item.pos.x - 36, item.pos.y - 36, 72, 72); 
+                }
+            });
+
+            // 8. Decorations
+            if(studioState.decorations.includes('lights')) {
+                for(let i=0; i<20; i++) {
+                    let a = Math.random() * Math.PI * 2;
+                    let r = 30 + Math.random()*80;
+                    let lx = cx + Math.cos(a)*r;
+                    let ly = cyBloom + Math.sin(a)*r*0.7;
+                    sctx.fillStyle = 'rgba(255, 235, 59, 0.3)';
+                    sctx.beginPath(); sctx.arc(lx, ly, 6, 0, Math.PI*2); sctx.fill();
+                    sctx.fillStyle = '#FFEB3B';
+                    sctx.beginPath(); sctx.arc(lx, ly, 2, 0, Math.PI*2); sctx.fill();
+                }
+            }
+            if(studioState.decorations.includes('baby')) {
+                for(let i=0; i<30; i++) {
+                    let a = Math.random() * Math.PI * 2;
+                    let r = Math.random()*90;
+                    let bx = cx + Math.cos(a)*r;
+                    let by = cyBloom + Math.sin(a)*r*0.7;
+                    sctx.fillStyle = '#FFFFFF';
+                    sctx.beginPath(); sctx.arc(bx, by, 3, 0, Math.PI*2); sctx.fill();
+                }
+            }
+
+            // 9. Ribbon & Realistic Bow
+            if (studioState.ribbon !== 'none') {
+                let ribbonY = cy + 40; 
+                let baseColor = studioState.ribbonColor;
+                if(studioState.ribbon === 'twine') baseColor = '#8D6E63';
+
+                sctx.fillStyle = baseColor;
+                // Horizontal wrap
+                sctx.fillRect(cx - 70, ribbonY, 140, 18);
+
+                // Classic Bow (Loops and Tails)
+                // Left Loop
+                sctx.beginPath();
+                sctx.moveTo(cx - 15, ribbonY + 2);
+                sctx.quadraticCurveTo(cx - 80, ribbonY - 30, cx - 60, ribbonY + 15);
+                sctx.quadraticCurveTo(cx - 40, ribbonY + 5, cx - 15, ribbonY + 15);
+                sctx.fill();
+
+                // Right Loop
+                sctx.beginPath();
+                sctx.moveTo(cx + 15, ribbonY + 2);
+                sctx.quadraticCurveTo(cx + 80, ribbonY - 30, cx + 60, ribbonY + 15);
+                sctx.quadraticCurveTo(cx + 40, ribbonY + 5, cx + 15, ribbonY + 15);
+                sctx.fill();
+
+                // Center Knot
+                sctx.fillRect(cx - 15, ribbonY - 5, 30, 25);
+
+                // Left Tail
+                sctx.beginPath();
+                sctx.moveTo(cx - 10, ribbonY + 15);
+                sctx.quadraticCurveTo(cx - 40, ribbonY + 50, cx - 50, ribbonY + 110);
+                sctx.lineTo(cx - 30, ribbonY + 110);
+                sctx.quadraticCurveTo(cx - 20, ribbonY + 50, cx - 5, ribbonY + 15);
+                sctx.fill();
+
+                // Right Tail
+                sctx.beginPath();
+                sctx.moveTo(cx + 10, ribbonY + 15);
+                sctx.quadraticCurveTo(cx + 40, ribbonY + 50, cx + 50, ribbonY + 110);
+                sctx.lineTo(cx + 30, ribbonY + 110);
+                sctx.quadraticCurveTo(cx + 20, ribbonY + 50, cx + 5, ribbonY + 15);
+                sctx.fill();
+
+                // Ribbon Style Details
+                if(studioState.ribbon === 'satin') {
+                    sctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    sctx.fillRect(cx - 70, ribbonY, 140, 5); // H. wrap highlight
+                    // Loop highlights
+                    sctx.beginPath(); sctx.moveTo(cx - 15, ribbonY + 2); sctx.quadraticCurveTo(cx - 70, ribbonY - 20, cx - 55, ribbonY + 10); sctx.quadraticCurveTo(cx - 45, ribbonY + 5, cx - 15, ribbonY + 10); sctx.fill();
+                    sctx.beginPath(); sctx.moveTo(cx + 15, ribbonY + 2); sctx.quadraticCurveTo(cx + 70, ribbonY - 20, cx + 55, ribbonY + 10); sctx.quadraticCurveTo(cx + 45, ribbonY + 5, cx + 15, ribbonY + 10); sctx.fill();
+                } else if (studioState.ribbon === 'velvet') {
+                    sctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    sctx.fillRect(cx - 70, ribbonY + 13, 140, 5); // H. wrap shadow
+                    // Loop shadows
+                    sctx.beginPath(); sctx.moveTo(cx - 15, ribbonY + 5); sctx.quadraticCurveTo(cx - 60, ribbonY + 5, cx - 50, ribbonY + 15); sctx.quadraticCurveTo(cx - 40, ribbonY + 10, cx - 15, ribbonY + 15); sctx.fill();
+                    sctx.beginPath(); sctx.moveTo(cx + 15, ribbonY + 5); sctx.quadraticCurveTo(cx + 60, ribbonY + 5, cx + 50, ribbonY + 15); sctx.quadraticCurveTo(cx + 40, ribbonY + 10, cx + 15, ribbonY + 15); sctx.fill();
+                } else if (studioState.ribbon === 'lace') {
+                    sctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    for(let i=0; i<14; i++) sctx.fillRect(cx - 65+i*10, ribbonY+5, 4, 10); // H. wrap holes
+                } else if (studioState.ribbon === 'twine') {
+                    sctx.strokeStyle = '#5D4037'; sctx.lineWidth = 1;
+                    for(let i=0; i<14; i++) { sctx.beginPath(); sctx.moveTo(cx - 70+i*10, ribbonY); sctx.lineTo(cx - 65+i*10, ribbonY+18); sctx.stroke(); } // H. wrap texture
+                }
+
+                if(studioState.decorations.includes('pearls')) {
+                    for(let i=0; i<10; i++) {
+                        sctx.fillStyle = '#FFFFFF';
+                        sctx.beginPath(); sctx.arc(cx - 40+i*10, ribbonY + 9, 3, 0, Math.PI*2); sctx.fill();
+                        sctx.fillStyle = 'rgba(255,255,255,0.5)';
+                        sctx.beginPath(); sctx.arc(cx - 40+i*10, ribbonY + 8, 1, 0, Math.PI*2); sctx.fill();
+                    }
+                }
+            }
+
+            // 10. Message
+            sctx.fillStyle = '#37474F';
+            sctx.font = 'italic 30px "Cormorant Garamond"';
+            sctx.textAlign = 'center';
+            let msg = studioState.message || 'Write something from your heart...';
+            let words = msg.split(' ');
+            let line = ''; let yText = 720;
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                if (sctx.measureText(testLine).width > 400 && n > 0) {
+                    sctx.fillText(line, 300, yText); line = words[n] + ' '; yText += 35;
+                } else { line = testLine; }
+            } sctx.fillText(line, 300, yText);
+
+            // 11. Meaning
+            sctx.font = 'bold 18px "Cormorant Garamond"';
+            sctx.fillStyle = '#8F9E8B';
+            let meaningText = 'Your Bouquet Symbolizes: ';
+            if(basket.length > 0) { meaningText += basket.map(f => f.meaning).join(', '); } 
+            else { meaningText += 'Nothing yet'; }
+            sctx.fillText(meaningText, 300, 780);
+
+            // 12. Stickers
+            studioState.stickers.forEach(s => {
+                sctx.font = '40px serif';
+                sctx.fillText(s.type, s.x, s.y);
+            });
+        }
+
+        function updateMeaningText() {
+            let text = 'Collect flowers to reveal their meanings...';
+            if(basket.length > 0) {
+                let meanings = basket.map(f => f.meaning);
+                let uniqueMeanings = [...new Set(meanings)];
+                text = uniqueMeanings.join('\n') + '\n\nOverall Meaning:\n"This bouquet expresses a beautiful combination of sentiments, carefully chosen to convey your deepest feelings."';
+            }
+            document.getElementById('meaning-text').innerText = text;
+        }
+
+        // --- EVENTS ---
+        document.getElementById('enter-btn').addEventListener('click', () => { document.getElementById('home-screen').classList.remove('active'); document.getElementById('path-screen').classList.add('active'); });
+        document.getElementById('home-back-btn').addEventListener('click', () => { document.getElementById('path-screen').classList.remove('active'); document.getElementById('home-screen').classList.add('active'); });
+        document.getElementById('back-btn').addEventListener('click', () => { gameStarted = false; gameLoopRunning = false; worldObjects = []; document.getElementById('game-screen').classList.remove('active'); document.getElementById('path-screen').classList.add('active'); });
+        
+        document.getElementById('studio-btn').addEventListener('click', () => {
+            gameStarted = false; 
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('studio-screen').classList.add('active');
+            updateMeaningText();
+            startStudioAnim();
+        });
+
+        document.getElementById('back-to-game-btn').addEventListener('click', () => {
+            stopStudioAnim();
+            document.getElementById('studio-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            gameStarted = true; gameLoop(); 
+        });
+
+        document.querySelectorAll('#style-options button').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('#style-options button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); studioState.style = btn.dataset.val; }); });
+        document.querySelectorAll('#wrap-options button').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('#wrap-options button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); studioState.wrap = btn.dataset.val; }); });
+        document.querySelectorAll('#vase-options button').forEach(btn => { btn.addEventListener('click', () => { document.querySelectorAll('#vase-options button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); studioState.vase = btn.dataset.val; }); });
+        
+        document.getElementById('ribbon-style-select').addEventListener('change', (e) => { studioState.ribbon = e.target.value; });
+        document.getElementById('ribbon-color-picker').addEventListener('input', (e) => { studioState.ribbonColor = e.target.value; });
+        document.getElementById('bg-select').addEventListener('change', (e) => { 
+            studioState.bg = e.target.value; 
+            if (studioState.bg === 'moving_petals' || studioState.bg === 'moving_stars') initStudioParticles(); 
+        });
+        document.getElementById('message-input').addEventListener('input', (e) => { studioState.message = e.target.value; });
+
+        document.querySelectorAll('#decor-options button').forEach(btn => { btn.addEventListener('click', () => { btn.classList.toggle('active'); if(btn.classList.contains('active')) studioState.decorations.push(btn.dataset.val); else studioState.decorations = studioState.decorations.filter(d => d !== btn.dataset.val); }); });
+
+        document.querySelectorAll('#sticker-options button').forEach(btn => { 
+            btn.addEventListener('click', () => { 
+                studioState.stickers.push({ type: btn.dataset.val, x: 300, y: 410 }); 
+            }); 
+        });
+        document.getElementById('clear-stickers').addEventListener('click', () => { studioState.stickers = []; });
+
+        studioCanvas.addEventListener('mousedown', (e) => {
+            const rect = studioCanvas.getBoundingClientRect();
+            const scaleX = studioCanvas.width / rect.width;
+            const scaleY = studioCanvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+            for(let i = studioState.stickers.length - 1; i >= 0; i--) {
+                let s = studioState.stickers[i];
+                if(Math.abs(mx - s.x) < 30 && Math.abs(my - s.y) < 30) { 
+                    draggingSticker = s; 
+                    break; 
+                }
+            }
+        });
+        studioCanvas.addEventListener('mousemove', (e) => {
+            if(draggingSticker) { 
+                const rect = studioCanvas.getBoundingClientRect();
+                const scaleX = studioCanvas.width / rect.width;
+                const scaleY = studioCanvas.height / rect.height;
+                draggingSticker.x = (e.clientX - rect.left) * scaleX; 
+                draggingSticker.y = (e.clientY - rect.top) * scaleY; 
+            }
+        });
+        studioCanvas.addEventListener('mouseup', () => { draggingSticker = null; });
+
+        document.getElementById('save-png').addEventListener('click', () => {
+            try {
+                const dataUrl = studioCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = 'effloresces_card.png';
+                document.body.appendChild(link); 
+                link.click();
+                document.body.removeChild(link); 
+            } catch (e) {
+                alert("Could not save image: " + e.message);
+            }
+        });
+
+        document.getElementById('create-another').addEventListener('click', () => {
+            stopStudioAnim();
+            basket = []; basketCount.innerText = 0;
+            document.getElementById('studio-screen').classList.remove('active');
+            document.getElementById('path-screen').classList.add('active');
+        });
+
+        window.addEventListener('keydown', (e) => { if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) { keys[e.key.toLowerCase()] = true; e.preventDefault(); } });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); const scaleX = canvas.width / rect.width; const scaleY = canvas.height / rect.height; let screenX = (e.clientX - rect.left) * scaleX; let screenY = (e.clientY - rect.top) * scaleY; worldMouseX = screenX - 480; worldMouseY = screenY + camY; });
+        canvas.addEventListener('click', () => { if(hoveredFlower && !hoveredFlower.plucked) { hoveredFlower.plucked = true; hoveredFlower.respawn = Date.now() + 5000; basket.push(hoveredFlower.data); basketCount.innerText = basket.length; } });
+    </script>
+</body>
+</html>
